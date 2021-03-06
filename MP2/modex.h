@@ -126,7 +126,9 @@ extern void show_screen();
 /* clear the video memory in mode X */
 extern void clear_screens();
 
-extern void set_bar(unsigned char bar_color);
+extern void init_bar(unsigned char bar_color);
+
+extern void set_status(unsigned char bar_color, unsigned char text_color);
 
 extern void show_bar();
 

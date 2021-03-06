@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include "text.h"
+#include "modex.h"
 
 /* 
  * These font data were read out of video memory during text mode and
@@ -561,3 +562,60 @@ unsigned char font_data[256][16] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
+
+int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, unsigned char bg_color) {
+    int length;         /* length of the string */
+    int max_number;     /* max character number in status bar */
+    int x_start;        /* pixel x coordinate of the first character in the image */
+    int x_cur;          /* pixel x coordinate of the current character in the image */
+    int addr;           /* addr of the pixel in the status bar */
+    int p_off;          /* offset of bar plane */
+    int bar_plane_size; /* size of one status bar plane */
+    int ascii;          /* ascii of current character */
+    int i;              /* loop index for traversing the string */
+    int j;              /* loop index for traversing the height of character */
+    int k;              /* loop index for traversing the width of character */
+
+    /* get the string length */
+    length = strlen(str);
+
+    /* per character is 8 pixel wide; */
+    max_number = BAR_X_DIM / 8;
+
+    /* if length of string is out of range (max number of charater in status bar), return -1 */
+    if(length>max_number) return -1;
+
+    /*
+     *  find the start x position of the first character in the image
+     *  to make the string centered in status bar. If the number of character
+     *  is odd, offset half character for all characters to make them centered
+     */
+    x_start = (max_number/2-length/2)*8-((length%2)?0:4);
+    x_cur = x_start;
+
+    /* skip first line of the bar */
+    bar += BAR_X_WIDTH;
+    /* get the size of one bar plane */
+    bar_plane_size = BAR_X_WIDTH*BAR_Y_DIM;
+
+    /* loop over all charater and directly draw char in the status bar */
+    for(i = 0; i < length; i++){
+        /* get ascii of current char */
+        ascii = (int)str[i];
+        /* loop over height of a char */
+        for(j = 0; j < 16; j++){
+            /* loop over width of a char */
+            for(k = 0; k < 8; k++){
+                /* using the image coordinate to get the bar address */
+                addr = ((x_cur+k) >> 2) + j * BAR_X_WIDTH;
+                p_off = ((x_cur+k) & 3);
+                /* pick out each bit in bitmap of the char */
+                bar[addr+p_off*bar_plane_size] = (font_data[ascii][j]>>(7-k))&(0x01)?(char_color):(bg_color);
+            }
+        }
+        /* go to next char */
+        x_cur += 8;
+    }
+
+    return 0;
+}

@@ -405,8 +405,9 @@ static void *rtc_thread(void *arg) {
             break;
         goto_next_level = 0;
 
-        // set status bar
-        set_bar(0x31);
+        // initialize status bar
+        init_bar(0x31);
+        set_status(0x31,0x18);
 
         // show status bar (copy to video memory)
         show_bar();
@@ -460,7 +461,7 @@ static void *rtc_thread(void *arg) {
             // Update tick to keep track of time.  If we missed some
             // interrupts we want to update the player multiple times so
             // that player velocity is smooth
-            ticks = data >> 8;    
+            ticks = data >> 8;
 
             total += ticks;
 

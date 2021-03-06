@@ -68,7 +68,8 @@
  */
 #define SCROLL_SIZE             (SCROLL_X_WIDTH * SCROLL_Y_DIM)
 #define SCREEN_SIZE             (SCROLL_SIZE * 4 + 1)
-#define BAR_SIZE                (BAR_X_WIDTH * BAR_Y_DIM)
+#define BAR_SIZE                (BAR_X_DIM * BAR_Y_DIM)
+#define BAR_PLANE_SIZE          (BAR_X_WIDTH * BAR_Y_DIM)
 #define BUILD_BUF_SIZE          (SCREEN_SIZE + 20000)
 #define BUILD_BASE_INIT         ((BUILD_BUF_SIZE - SCREEN_SIZE) / 2)
 
@@ -181,8 +182,8 @@ static int show_x, show_y;          /* logical view coordinates     */
 static unsigned char* mem_image;    /* pointer to start of video memory */
 static unsigned short target_img;   /* offset of displayed screen image */
 
-static unsigned char  bar[BAR_SIZE]; /* status bar          */
-// static unsigned char  bar_color;                  /* color of status bar */
+static unsigned char bar[BAR_SIZE]; /* status bar          */
+static char status[] = "abstractness is the price of generality";
 
 /*
  * functions provided by the caller to set_mode_X() and used to obtain
@@ -538,15 +539,24 @@ void clear_screens() {
     memset(mem_image, 0, MODE_X_MEM_SIZE);
 }
 
-void set_bar(unsigned char bar_color) {
+void init_bar(unsigned char bar_color) {
     int i;           /* loop indices for traversal of the status bar */
     
     for(i = 0; i < BAR_SIZE; i++)
         bar[i] = bar_color;
 }
 
+void set_status(unsigned char bar_color, unsigned char text_color) {
+    add_text_to_bar(status, bar, text_color, bar_color);
+}
+
 void show_bar() {
-    copy_bar(bar);
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        SET_WRITE_MASK(1 << (i + 8));
+        copy_bar(bar + i * BAR_PLANE_SIZE);
+    }
 }
 
 /*
