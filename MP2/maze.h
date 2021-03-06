@@ -93,6 +93,9 @@ extern unsigned char* get_player_block(dir_t cur_dir);
 /* get pointer to the player's mask image; depends on direction of motion */
 extern unsigned char* get_player_mask(dir_t cur_dir);
 
+/* get current fruit number */
+extern int get_fruit_num();
+
 /* get the player-with-background and background images; depends on direction of motion */
 extern void get_player_with_background(int x, int y, dir_t cur_dir, unsigned char* player_with_bg, unsigned char* bg);
 

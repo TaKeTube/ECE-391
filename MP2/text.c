@@ -563,6 +563,23 @@ unsigned char font_data[256][16] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
 
+/*
+ * add_text_to_bar
+ *   DESCRIPTION: Add text directly into the status bar. Traverse the string
+ *                to draw each character on status bar. For each pixel, 
+ *                first find the coordinates of the pixel in a "imagine" image of
+ *                a status bar with contiguous pixel, then conver this coordinate
+ *                into the real address in status bar buffer (which also has 4 planes
+ *                for the sake of drawing). Finally, judge whether this pixel should
+ *                be shown depends on whether the pixel in the char or the background.
+ *   INPUTS: str        -- pointer points to the string which should be displayed
+ *           bar        -- pointer points to the status bar buffer with has the size of
+ *           char_color -- color of the text displayed on status bar
+ *           bg_color   -- color of the background of status bar
+ *   OUTPUTS: none
+ *   RETURN VALUE: 0 on success, -1 on fail
+ *   SIDE EFFECTS: change the contents in status bar buffer
+ */
 int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, unsigned char bg_color) {
     int length;         /* length of the string */
     int max_number;     /* max character number in status bar */
@@ -576,14 +593,20 @@ int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, uns
     int j;              /* loop index for traversing the height of character */
     int k;              /* loop index for traversing the width of character */
 
+    /* invalid bar pointer, return -1 */
+    if(str == NULL) return -1;
+
     /* get the string length */
     length = strlen(str);
 
     /* per character is 8 pixel wide; */
     max_number = BAR_X_DIM / 8;
 
-    /* if length of string is out of range (max number of charater in status bar), return -1 */
-    if(length>max_number) return -1;
+    /* 
+     * if length of string is out of range (max number of charater in status bar),
+     * or invalid bar pointer, return -1
+     */
+    if(length>max_number || bar == NULL) return -1;
 
     /*
      *  find the start x position of the first character in the image
@@ -610,6 +633,7 @@ int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, uns
                 addr = ((x_cur+k) >> 2) + j * BAR_X_WIDTH;
                 p_off = ((x_cur+k) & 3);
                 /* pick out each bit in bitmap of the char */
+                /* 0x01 is a filter of the first bit       */
                 bar[addr+p_off*bar_plane_size] = (font_data[ascii][j]>>(7-k))&(0x01)?(char_color):(bg_color);
             }
         }

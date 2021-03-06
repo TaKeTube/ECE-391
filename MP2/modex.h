@@ -126,10 +126,22 @@ extern void show_screen();
 /* clear the video memory in mode X */
 extern void clear_screens();
 
+/* inital the bar buffer with the background color */
 extern void init_bar(unsigned char bar_color);
 
-extern void set_status(unsigned char bar_color, unsigned char text_color);
+/* update level number in status string. */
+extern void set_level_text(int level);
 
+/* update the fruit number in status string. */
+extern void set_fruit_number_text(int num);
+
+/* update the time in status string */
+extern void set_time_text(int time);
+
+/* update the status text and show status bar on the video display. */
+extern void show_status(unsigned char bar_color, unsigned char text_color);
+
+/* Show the status bar on the video display. */
 extern void show_bar();
 
 /*

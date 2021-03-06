@@ -773,6 +773,18 @@ unsigned char* get_player_mask(dir_t cur_dir) {
 }
 
 /* 
+ * get_fruit_num
+ *   DESCRIPTION: get current fruit number
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: current fruit number
+ *   SIDE EFFECTS: none
+ */
+int get_fruit_num() {
+    return n_fruits;
+}
+
+/* 
  * get_player_with_background
  *   DESCRIPTION: Get graphical images for the player on a background & background.
  *   INPUTS:    (x, y)  -- player's pixel coordinates on the maze world

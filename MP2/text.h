@@ -44,6 +44,7 @@
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];
 
+/* Add text directly into the status bar */
 extern int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, unsigned char bg_color);
 
 #endif /* TEXT_H */

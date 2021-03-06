@@ -182,8 +182,13 @@ static int show_x, show_y;          /* logical view coordinates     */
 static unsigned char* mem_image;    /* pointer to start of video memory */
 static unsigned short target_img;   /* offset of displayed screen image */
 
-static unsigned char bar[BAR_SIZE]; /* status bar          */
-static char status[] = "abstractness is the price of generality";
+static unsigned char bar[BAR_SIZE];                     /* buffer for status bar, also has 4 plane      */
+static char status[] = "Level 1    0 Fruit    00:00";   /* text which should be displayed on status bar */
+
+/* string index in status string */
+#define LEVEL_POS     6             /* index of the level               */
+#define FRUIT_NUM_POS 11            /* index of the fruit number        */
+#define TIME_POS      22            /* index of the left most time char */
 
 /*
  * functions provided by the caller to set_mode_X() and used to obtain
@@ -539,6 +544,14 @@ void clear_screens() {
     memset(mem_image, 0, MODE_X_MEM_SIZE);
 }
 
+/*
+ * init_bar
+ *   DESCRIPTION: inital the bar buffer with the background color
+ *   INPUTS: bar_color -- color of the background of status bar
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: update the level number in status string;
+ */
 void init_bar(unsigned char bar_color) {
     int i;           /* loop indices for traversal of the status bar */
     
@@ -546,12 +559,78 @@ void init_bar(unsigned char bar_color) {
         bar[i] = bar_color;
 }
 
-void set_status(unsigned char bar_color, unsigned char text_color) {
-    add_text_to_bar(status, bar, text_color, bar_color);
+/*
+ * set_level_text
+ *   DESCRIPTION: update level number in status string.
+ *   INPUTS: level -- the level number should be setted
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: update the level number in status string;
+ */
+void set_level_text(int level) {
+    /* 48 is the ascii of '0' */
+    status[LEVEL_POS] = (char)(level%10+48);
+    if(level>=10) status[LEVEL_POS-1] = (char)(level/10+48);
 }
 
+/*
+ * set_fruit_number_text
+ *   DESCRIPTION: update the fruit number in status string.
+ *   INPUTS: num -- the fruit number should be setted
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: update the fruit number in status string;
+ */
+void set_fruit_number_text(int num) {
+    /* 48 is the ascii of '0' */
+    status[FRUIT_NUM_POS] = (char)(48 + num);
+}
+
+/*
+ * set_time_text
+ *   DESCRIPTION: update the time in status string.
+ *   INPUTS: time -- time should be setted
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: update the time in status string;
+ */
+void set_time_text(int time) {
+    int min;        /* minute */
+    int second;     /* second */
+
+    second = time%60;
+    status[TIME_POS+3] = (char)(second/10+48);
+    status[TIME_POS+4] = (char)(second%10+48);
+
+    min = time/60;
+    status[TIME_POS] = (char)(min/10+48);
+    status[TIME_POS+1] = (char)(min%10+48);
+}
+
+/*
+ * show_status
+ *   DESCRIPTION: update the status text and show status bar on the video display.
+ *   INPUTS: bar_color  -- color of the background of status bar
+ *           text_color -- color of the text displayed on status bar
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: update status bar buffer & copies from status buffer to video memory;
+ */
+void show_status(unsigned char bar_color, unsigned char text_color) {
+    add_text_to_bar(status, bar, text_color, bar_color);
+    show_bar();
+}
+
+/*
+ * show_bar
+ *   DESCRIPTION: Show the status bar on the video display.
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies from status buffer to video memory;
+ */
 void show_bar() {
-    int i;
+    int i;      /* index for traversing status bar */
 
     for (i = 0; i < 4; i++) {
         SET_WRITE_MASK(1 << (i + 8));
@@ -671,13 +750,6 @@ int draw_vert_line(int x) {
 
     /* Calculate plane offset of first pixel. */
     p_off = (3 - (x & 3));
-
-    /* Check whether the plane is "connected" to the top plane */
-    // no need for this line
-    // BUG vertline check
-    // if((show_x & 3) > (x & 3)){
-    //     addr++;
-    // }
 
     /* Copy image data into appropriate planes in build buffer. */
     p_pixel_off = p_off * SCROLL_SIZE;

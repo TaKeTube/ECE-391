@@ -391,10 +391,13 @@ static void *rtc_thread(void *arg) {
     int ticks = 0;
     int level;
     int ret;
+    int begin_time;
+    int curr_time;
     int open[NUM_DIRS];
     int need_redraw = 0;
     int need_undraw = 0;
     int goto_next_level = 0;
+    unsigned char bar_color;
     unsigned char *player_with_bg = NULL;
     unsigned char *bg = NULL;
 
@@ -405,12 +408,19 @@ static void *rtc_thread(void *arg) {
             break;
         goto_next_level = 0;
 
+        // record the begin time of the level
+        begin_time = time(NULL);
+
+        // set status bar color for this level
+        bar_color = 0x0F;
+
         // initialize status bar
-        init_bar(0x31);
-        set_status(0x31,0x18);
+        init_bar(bar_color);
+        set_level_text(level);
+        set_fruit_number_text(get_fruit_num());
 
         // show status bar (copy to video memory)
-        show_bar();
+        show_status(bar_color,0x02);
 
         // Start the player at (1,1)
         play_x = BLOCK_X_DIM;
@@ -474,6 +484,12 @@ static void *rtc_thread(void *arg) {
             else {
                 goodcount++;
             }
+
+            // update status text and show
+            curr_time = time(NULL);
+            set_fruit_number_text(get_fruit_num());
+            set_time_text(curr_time-begin_time);
+            show_status(bar_color,0x02);
 
             while (ticks--) {
 
