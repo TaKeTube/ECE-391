@@ -405,6 +405,12 @@ static void *rtc_thread(void *arg) {
             break;
         goto_next_level = 0;
 
+        // set status bar
+        set_bar(0x31);
+
+        // show status bar (copy to video memory)
+        show_bar();
+
         // Start the player at (1,1)
         play_x = BLOCK_X_DIM;
         play_y = BLOCK_Y_DIM;

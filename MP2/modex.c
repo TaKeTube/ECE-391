@@ -68,6 +68,7 @@
  */
 #define SCROLL_SIZE             (SCROLL_X_WIDTH * SCROLL_Y_DIM)
 #define SCREEN_SIZE             (SCROLL_SIZE * 4 + 1)
+#define BAR_SIZE                (BAR_X_WIDTH * BAR_Y_DIM)
 #define BUILD_BUF_SIZE          (SCREEN_SIZE + 20000)
 #define BUILD_BASE_INIT         ((BUILD_BUF_SIZE - SCREEN_SIZE) / 2)
 
@@ -85,9 +86,9 @@ static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
 };
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
     0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
-    0x0008, 0x4109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+    0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
     0x9C10, 0x8E11, 0x8F12, 0x2813, 0x0014, 0x9615, 0xB916, 0xE317,
-    0xFF18
+    0x6B18
 };
 static unsigned char mode_X_attr[NUM_ATTR_REGS * 2] = {
     0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
@@ -136,6 +137,7 @@ static void fill_palette();
 static void write_font_data();
 static void set_text_mode_3(int clear_scr);
 static void copy_image(unsigned char* img, unsigned short scr_addr);
+static void copy_bar(unsigned char* bar_start);
 
 /*
  * Images are built in this buffer, then copied to the video memory.
@@ -178,6 +180,9 @@ static int show_x, show_y;          /* logical view coordinates     */
                                     /* displayed video memory variables */
 static unsigned char* mem_image;    /* pointer to start of video memory */
 static unsigned short target_img;   /* offset of displayed screen image */
+
+static unsigned char  bar[BAR_SIZE]; /* status bar          */
+// static unsigned char  bar_color;                  /* color of status bar */
 
 /*
  * functions provided by the caller to set_mode_X() and used to obtain
@@ -300,7 +305,7 @@ int set_mode_X(void (*horiz_fill_fn)(int, int, unsigned char[SCROLL_X_DIM]),
     }
 
     /* One display page goes at the start of video memory. */
-    target_img = 0x0000;
+    target_img = BAR_SIZE;
 
     /* Map video memory and obtain permission for VGA port access. */
     if (open_memory_and_ports() == -1)
@@ -531,6 +536,17 @@ void clear_screens() {
 
     /* Set 64kB to zero (times four planes = 256kB). */
     memset(mem_image, 0, MODE_X_MEM_SIZE);
+}
+
+void set_bar(unsigned char bar_color) {
+    int i;           /* loop indices for traversal of the status bar */
+    
+    for(i = 0; i < BAR_SIZE; i++)
+        bar[i] = bar_color;
+}
+
+void show_bar() {
+    copy_bar(bar);
 }
 
 /*
@@ -1001,11 +1017,28 @@ static void copy_image(unsigned char* img, unsigned short scr_addr) {
      */
     asm volatile ("                                             \n\
         cld                                                     \n\
-        movl $16000,%%ecx                                       \n\
+        movl $14560,%%ecx                                       \n\
         rep movsb    /* copy ECX bytes from M[ESI] to M[EDI] */ \n\
         "
         : /* no outputs */
         : "S"(img), "D"(mem_image + scr_addr)
+        : "eax", "ecx", "memory"
+    );
+}
+
+static void copy_bar(unsigned char* bar_start) {
+    /*
+     * memcpy is actually probably good enough here, and is usually
+     * implemented using ISA-specific features like those below,
+     * but the code here provides an example of x86 string moves
+     */
+    asm volatile ("                                             \n\
+        cld                                                     \n\
+        movl $1440,%%ecx                                        \n\
+        rep movsb    /* copy ECX bytes from M[ESI] to M[EDI] */ \n\
+        "
+        : /* no outputs */
+        : "S"(bar_start), "D"(mem_image)
         : "eax", "ecx", "memory"
     );
 }

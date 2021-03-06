@@ -51,8 +51,11 @@
 #define IMAGE_X_DIM     320   /* pixels; must be divisible by 4             */
 #define IMAGE_Y_DIM     200   /* pixels                                     */
 #define IMAGE_X_WIDTH   (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
+#define BAR_X_DIM       IMAGE_X_DIM                /* bar width             */
+#define BAR_Y_DIM       18                         /* bar height            */
+#define BAR_X_WIDTH     (BAR_X_DIM / 4)            /* addresses (bytes)     */
 #define SCROLL_X_DIM    IMAGE_X_DIM                /* full image width      */
-#define SCROLL_Y_DIM    IMAGE_Y_DIM                /* full image width      */
+#define SCROLL_Y_DIM    IMAGE_Y_DIM - BAR_Y_DIM    /* full image width      */
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 
 /*
@@ -122,6 +125,10 @@ extern void show_screen();
 
 /* clear the video memory in mode X */
 extern void clear_screens();
+
+extern void set_bar(unsigned char bar_color);
+
+extern void show_bar();
 
 /*
  * draw a 12x12 block with upper left corner at logical position
