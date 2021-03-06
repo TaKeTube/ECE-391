@@ -774,16 +774,22 @@ unsigned char* get_player_mask(dir_t cur_dir) {
 
 /* 
  * get_player_with_background
- *   DESCRIPTION: Get a graphical image for the player on a background.
+ *   DESCRIPTION: Get graphical images for the player on a background & background.
  *   INPUTS:    (x, y)  -- player's pixel coordinates on the maze world
  *              cur_dir -- current direction of motion for the player
+ *              player_with_bg -- pointers to allocated space with size BLOCK_Y_DIM*BLOCK_X_DIM 
+ *                                (one byte per pixel laid out as a C array of dimension 
+ *                                [BLOCK_Y_DIM][BLOCK_X_DIM])
+ *                                which should be filled with image data of player-with-background
+ *              bg             -- pointers to allocated space with size BLOCK_Y_DIM*BLOCK_X_DIM
+ *                                (one byte per pixel laid out as a C array of dimension 
+ *                                [BLOCK_Y_DIM][BLOCK_X_DIM])
+ *                                which should be filled with image data of background
  *   OUTPUTS: none
- *   RETURN VALUE: a pointer to an image of a BLOCK_X_DIM x BLOCK_Y_DIM
- *                 block of data with one byte per pixel laid out as a
- *                 C array of dimension [BLOCK_Y_DIM][BLOCK_X_DIM]
+ *   RETURN VALUE: none
  *   SIDE EFFECTS: none
  */
-unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
+void get_player_with_background(int x, int y, dir_t cur_dir, unsigned char* player_with_bg, unsigned char* bg) {
     unsigned char *mask;            /* buffer for mask image                         */
     unsigned char *player;          /* buffer for player block                       */
     unsigned char* block;           /* pointer to current maze block image           */
@@ -792,9 +798,9 @@ unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
     int pos;                        /* position of current pixel in a block          */
     int dx, dy;                     /* loop indices for x and y traversal of block   */
 
-    /* Buffer for image with palyer and background */
-    unsigned char *buf = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
-    
+    /* Check whether the pointer is valid. */
+    if(player_with_bg == NULL || bg == NULL) return;
+
     /* Get player block, mask block */
     player = get_player_block(cur_dir);
     mask = get_player_mask(cur_dir);
@@ -811,8 +817,9 @@ unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
     for (dy = sub_y; dy < BLOCK_Y_DIM; dy++) {
         for (dx = sub_x; dx < BLOCK_X_DIM; dx++) {
             pos = (dx-sub_x)+(dy-sub_y)*BLOCK_X_DIM;
-            /* Write block colors from first block into buffer. */
-            buf[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
+            /* Write block colors from first block into buffers. */
+            bg[pos] = block[dy * BLOCK_X_DIM + dx];
+            player_with_bg[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
         }
     }
 
@@ -822,8 +829,9 @@ unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
     for (dy = sub_y; dy < BLOCK_Y_DIM; dy++) {
         for (dx = 0; dx < sub_x; dx++) {
             pos = (dx+BLOCK_X_DIM-sub_x)+(dy-sub_y)*BLOCK_X_DIM;
-            /* Write block colors from second block into buffer. */
-            buf[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
+            /* Write block colors from second block into buffers. */
+            bg[pos] = block[dy * BLOCK_X_DIM + dx];
+            player_with_bg[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
         }
     }
 
@@ -834,7 +842,8 @@ unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
         for (dx = sub_x; dx < BLOCK_X_DIM; dx++) {
             pos = (dx-sub_x)+(dy+BLOCK_Y_DIM-sub_y)*BLOCK_X_DIM;
             /* Write block colors from third block into buffer. */
-            buf[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
+            bg[pos] = block[dy * BLOCK_X_DIM + dx];
+            player_with_bg[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
         }
     }
 
@@ -845,145 +854,10 @@ unsigned char* get_player_with_background(int x, int y, dir_t cur_dir) {
         for (dx = 0; dx < sub_x; dx++) {
             pos = (dx+BLOCK_X_DIM-sub_x)+(dy+BLOCK_Y_DIM-sub_y)*BLOCK_X_DIM;
             /* Write block colors from forth block into buffer. */
-            buf[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
+            bg[pos] = block[dy * BLOCK_X_DIM + dx];
+            player_with_bg[pos] = mask[pos] ? player[pos] : block[dy * BLOCK_X_DIM + dx];
         }
     }
-
-    return buf;
-}
-
-/* 
- * get_undraw_buf
- *   DESCRIPTION: Get a buffer for undrawing the player, depending on the direction of the player.
- *                For example, if player moves up, we should undraw the bottom line;
- *                if player moves right, we should undraw the left line;
- *   INPUTS:    (x, y)  -- player's pixel coordinates on the maze world before moving
- *              cur_dir -- current direction of motion for the player
- *   OUTPUTS: none
- *   RETURN VALUE: a pointer to an buffer of a BLOCK_X_DIM or BLOCK_Y_DIM (depending on the direction)
- *                 length of data with one byte per pixel laid out as a
- *                 C array of [BLOCK_Y_DIM] or [BLOCK_X_DIM]
- *   SIDE EFFECTS: none
- */
-unsigned char* get_undraw_buf(int x, int y, dir_t cur_dir){
-    unsigned char* block;           /* pointer to current maze block image           */
-    unsigned char* buf;             /* undraw buffer */
-    int map_x, map_y;               /* maze lattice point of the first block on line */
-    int sub_x, sub_y;               /* sub-block address                             */
-    int dx, dy;                     /* loop indices for x and y traversal of block   */
-
-    /* Find the maze lattice point and the pixel address within the upper left block. */
-    map_x = x / BLOCK_X_DIM;
-    map_y = y / BLOCK_Y_DIM;
-    sub_x = x - map_x * BLOCK_X_DIM;
-    sub_y = y - map_y * BLOCK_Y_DIM;
-
-    switch (cur_dir) {
-        case DIR_UP:
-            /* get bottom segment */
-            /* increase map_y because it is the bottom segment*/
-            map_y++;
-
-            /* dynamically allocate a buffer */
-            buf = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM);
-
-            /* Loop over pixels in first blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y);
-            /* Write block colors from first block into buffer. */
-            for (dx = sub_x; dx < BLOCK_X_DIM; dx++)
-                buf[dx-sub_x] = block[sub_y * BLOCK_X_DIM + dx];
-
-            /* avoid extra calculation for block */
-            if(sub_x==0) break;
-
-            /* Loop over pixels in second blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x+1, map_y);
-            /* Write block colors from second block into buffer. */
-            for (dx = 0; dx < sub_x; dx++)
-                buf[dx+BLOCK_X_DIM-sub_x] = block[sub_y * BLOCK_X_DIM + dx];
-
-            break;
-        case DIR_RIGHT:
-            /* get left segment */
-            /* dynamically allocate a buffer */
-            buf = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_Y_DIM);
-
-            /* Loop over pixels in first blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y);
-            /* Write block colors from first block into buffer. */
-            for (dy = sub_y; dy < BLOCK_Y_DIM; dy++)
-                buf[dy-sub_y] = block[dy * BLOCK_X_DIM + sub_x];
-
-            /* avoid extra calculation for block */
-            if(sub_y==0) break;
-
-            /* Loop over pixels in second blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y+1);
-            /* Write block colors from third block into buffer. */
-            for (dy = 0; dy < sub_y; dy++)
-                buf[dy+BLOCK_Y_DIM-sub_y] = block[dy * BLOCK_X_DIM + sub_x];
-
-            break;
-        case DIR_DOWN:
-            /* get up segment */
-            /* dynamically allocate a buffer */
-            buf = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM);
-
-            /* Loop over pixels in first blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y);
-            /* Write block colors from first block into buffer. */
-            for (dx = sub_x; dx < BLOCK_X_DIM; dx++)
-                buf[dx-sub_x] = block[sub_y * BLOCK_X_DIM + dx];
-
-            /* avoid extra calculation for block */
-            if(sub_x==0) break;
-
-            /* Loop over pixels in second blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x+1, map_y);
-            /* Write block colors from second block into buffer. */
-            for (dx = 0; dx < sub_x; dx++)
-                buf[dx+BLOCK_X_DIM-sub_x] = block[sub_y * BLOCK_X_DIM + dx];
-
-            break;
-        case DIR_LEFT:
-            /* get right segment */
-            /* increase map_y because it is the right segment*/
-            map_x++;
-
-            /* dynamically allocate a buffer */
-            buf = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_Y_DIM);
-
-            /* Loop over pixels in first blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y);
-            /* Write block colors from first block into buffer. */
-            for (dy = sub_y; dy < BLOCK_Y_DIM; dy++)
-                buf[dy-sub_y] = block[dy * BLOCK_X_DIM + sub_x];
-
-            /* avoid extra calculation for block */
-            if(sub_y==0) break;
-
-            /* Loop over pixels in second blocks. */
-            /* Find address of block to be drawn. */
-            block = find_block(map_x, map_y+1);
-            /* Write block colors from third block into buffer. */
-            for (dy = 0; dy < sub_y; dy++)
-                buf[dy+BLOCK_Y_DIM-sub_y] = block[dy * BLOCK_X_DIM + sub_x];
-
-            break;
-        default :
-            /* Return NULL if get invalid direction */
-            buf = NULL;
-            break;
-    }
-
-    return buf;
 }
 
 /* 

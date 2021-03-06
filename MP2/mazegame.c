@@ -393,9 +393,10 @@ static void *rtc_thread(void *arg) {
     int ret;
     int open[NUM_DIRS];
     int need_redraw = 0;
+    int need_undraw = 0;
     int goto_next_level = 0;
-    unsigned char *masked_player;
-    unsigned char *undraw_buf;
+    unsigned char *player_with_bg = NULL;
+    unsigned char *bg = NULL;
 
     // Loop over levels until a level is lost or quit.
     for (level = 1; (level <= MAX_LEVEL) && (quit_flag == 0); level++) {
@@ -422,11 +423,26 @@ static void *rtc_thread(void *arg) {
         // Show maze around the player's original position
         (void)unveil_around_player(play_x, play_y);
 
+        // Buffers for image with palyer and background and only background
+        bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+        player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+
+        // Write image into player with background buffer.
+        get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
+
         // draw_full_block(play_x, play_y, get_player_block(last_dir));
-        masked_player = get_player_with_background(play_x, play_y, last_dir);
-        draw_full_block(play_x, play_y, masked_player);
-        free(masked_player);
+        draw_full_block(play_x, play_y, player_with_bg);
+
         show_screen();
+
+        // undraw the palyer
+        draw_full_block(play_x, play_y, bg);
+
+        // free the pointers
+        free(player_with_bg);
+        player_with_bg = NULL;
+        free(bg);
+        bg = NULL;
 
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
@@ -513,38 +529,44 @@ static void *rtc_thread(void *arg) {
                     // move in chosen direction
                     last_dir = dir;
                     move_cnt--;
-                    undraw_buf = get_undraw_buf(play_x, play_y, dir);
                     switch (dir) {
                         case DIR_UP:
-                            /* undraw the player */
-                            if(undraw_buf!=NULL) draw_horiz_segment(play_x, play_y+BLOCK_Y_DIM, BLOCK_X_DIM, undraw_buf);
                             move_up(&play_y);    
                             break;
                         case DIR_RIGHT: 
-                            /* undraw the player */
-                            if(undraw_buf!=NULL) draw_vert_segment(play_x, play_y, BLOCK_Y_DIM, undraw_buf);
                             move_right(&play_x);
                             break;
                         case DIR_DOWN:  
-                            /* undraw the player */
-                            if(undraw_buf!=NULL) draw_horiz_segment(play_x, play_y, BLOCK_X_DIM, undraw_buf);
                             move_down(&play_y);
                             break;
                         case DIR_LEFT:
-                            /* undraw the player */
-                            if(undraw_buf!=NULL) draw_vert_segment(play_x+BLOCK_X_DIM, play_y, BLOCK_Y_DIM, undraw_buf);
                             move_left(&play_x);
                             break;
                     }
-                    free(undraw_buf);
-                    masked_player = get_player_with_background(play_x, play_y, last_dir);
-                    draw_full_block(play_x, play_y, masked_player);
-                    free(masked_player);
+                    /* allocate spaces for background buffer and player with background buffer*/
+                    bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+                    player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+                    /* write image into buffers*/
+                    get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
+                    /* Draw palyer with background */
+                    draw_full_block(play_x, play_y, player_with_bg);
+                    /* free the pointer */
+                    free(player_with_bg);
+                    player_with_bg = NULL;
                     need_redraw = 1;
+                    need_undraw = 1;
                 }
             }
             if (need_redraw)
-                show_screen();    
+                show_screen();
+            /* Undraw the player if he has moved. */
+            if (need_undraw && bg != NULL){
+                draw_full_block(play_x, play_y, bg);
+                /* free the pointer */
+                free(bg);
+                bg = NULL;
+                need_undraw = 0;
+            }
             need_redraw = 0;
         }    
     }

@@ -93,11 +93,8 @@ extern unsigned char* get_player_block(dir_t cur_dir);
 /* get pointer to the player's mask image; depends on direction of motion */
 extern unsigned char* get_player_mask(dir_t cur_dir);
 
-/* get pointer to the player and background image; depends on direction of motion */
-extern unsigned char* get_player_with_background(int x, int y, dir_t cur_dir);
-
-/* get pointer to the segment used for undraw player; depends on direction of motion */
-extern unsigned char* get_undraw_buf(int x, int y, dir_t cur_dir);
+/* get the player-with-background and background images; depends on direction of motion */
+extern void get_player_with_background(int x, int y, dir_t cur_dir, unsigned char* player_with_bg, unsigned char* bg);
 
 /* determine which directions are open to movement from a given maze point */
 extern void find_open_directions(int x, int y, int op[NUM_DIRS]);

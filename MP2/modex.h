@@ -136,16 +136,4 @@ extern int draw_horiz_line(int y);
 /* draw a vertical line at horizontal pixel x within the logical view window */
 extern int draw_vert_line(int x);
 
-/* draw a horizontal segment at logical position (pos_x,pos_y);
- * any part of the segment outside of the logical view window
- * is clipped (cut off and not drawn)
- */
-extern void draw_horiz_segment(int pos_x, int pos_y, int length, unsigned char * buf);
-
-/* draw a vertical segment at logical position (pos_x,pos_y);
- * any part of the segment outside of the logical view window
- * is clipped (cut off and not drawn)
- */
-extern void draw_vert_segment(int pos_x, int pos_y, int length, unsigned char * buf);
-
 #endif /* MODEX_H */
