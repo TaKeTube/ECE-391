@@ -395,7 +395,6 @@ static void *rtc_thread(void *arg) {
     int curr_time;
     int open[NUM_DIRS];
     int need_redraw = 0;
-    int need_undraw = 0;
     int goto_next_level = 0;
     unsigned char bar_color;
     unsigned char *player_with_bg = NULL;
@@ -577,19 +576,39 @@ static void *rtc_thread(void *arg) {
                     free(player_with_bg);
                     player_with_bg = NULL;
                     need_redraw = 1;
-                    need_undraw = 1;
                 }
             }
-            if (need_redraw)
+            if (need_redraw){
                 show_screen();
-            /* Undraw the player if he has moved. */
-            if (need_undraw && bg != NULL){
-                draw_full_block(play_x, play_y, bg);
+                /* Undraw the player if he has moved. */
+                if (bg != NULL){
+                    draw_full_block(play_x, play_y, bg);
+                    /* free the pointer */
+                    free(bg);
+                    bg = NULL;
+                }
+            } else {
+                /* update the screen even if the player is not moving */
+                /* allocate spaces for background buffer and player with background buffer*/
+                bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+                player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+                /* write image into buffers*/
+                get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
+                /* Draw palyer with background */
+                draw_full_block(play_x, play_y, player_with_bg);
                 /* free the pointer */
-                free(bg);
-                bg = NULL;
-                need_undraw = 0;
+                free(player_with_bg);
+                player_with_bg = NULL;
+                show_screen();
+                /* Undraw the player if he has moved. */
+                if (bg != NULL){
+                    draw_full_block(play_x, play_y, bg);
+                    /* free the pointer */
+                    free(bg);
+                    bg = NULL;
+                }
             }
+
             need_redraw = 0;
         }    
     }

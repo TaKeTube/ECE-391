@@ -1,0 +1,29 @@
+1.
+NAME      : Zimu 
+TIME      : 20-3-4
+BUG       : Draw Vertical Line. Sometime there would be some pixel offsets of the line (for example, drawing line 1 at the position of line 2)
+SOLUTION  : Remove the checking for 1 offset between 4 planes in build buffer. But do not know why we should not check this condition in build buffer.
+
+2.
+NAME      : Zimu
+TIME      : 20-3-5
+BUG       : Masking. Left player track on the background.
+SOLUTION  : Undraw the player by drawing the background.
+
+3.
+NAME      : Zimu
+TIME      : 20-3-6
+BUG       : Status Bar. Wrong height of status bar when using 200-18-1 as the value in Compare Line Reg
+SOLUTION  : One pixel height corresponds to 2 scan lines. Change it to (200-18)*2-1.
+
+4.
+NAME      : Zimu
+TIME      : 20-3-6
+BUG       : Status Bar. Display the upper portion of the screen in the position of the status bar.
+SOLUTION  : Change the base addr of the screen from 0 to 0x05A0
+
+5.
+NAME      : Zimu
+TIME      : 20-3-7
+BUG       : Fruit would not update immediately when the player touch the center of it. (would only update when player is moving)
+SOLUTION  : Show the screen every second whatever the redraw is.
