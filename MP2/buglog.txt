@@ -26,4 +26,4 @@ SOLUTION  : Change the base addr of the screen from 0 to 0x05A0
 NAME      : Zimu
 TIME      : 20-3-7
 BUG       : Fruit would not update immediately when the player touch the center of it. (would only update when player is moving)
-SOLUTION  : Show the screen every second whatever the redraw is.
+SOLUTION  : Show the screen every update whatever the redraw is.

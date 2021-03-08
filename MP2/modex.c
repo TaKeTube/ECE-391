@@ -188,6 +188,7 @@ static char status[] = "Level 1    0 Fruit    00:00";   /* text which should be 
 /* string index in status string */
 #define LEVEL_POS     6             /* index of the level               */
 #define FRUIT_NUM_POS 11            /* index of the fruit number        */
+#define FRUIT_ODD_POS 18
 #define TIME_POS      22            /* index of the left most time char */
 
 /*
@@ -584,6 +585,8 @@ void set_level_text(int level) {
 void set_fruit_number_text(int num) {
     /* 48 is the ascii of '0' */
     status[FRUIT_NUM_POS] = (char)(48 + num);
+    /* change "Fruits" to "Fruit" if the fruit number is 1 because it is singular. Else, keep "Fruits" */
+    status[FRUIT_ODD_POS] = (num==1)?' ':'s';
 }
 
 /*
