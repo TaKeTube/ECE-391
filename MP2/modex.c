@@ -85,6 +85,13 @@
 static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
     0x0100, 0x2101, 0x0F02, 0x0003, 0x0604
 };
+
+/* 
+ * Line compare value (10bits) changed to (200-18)*2-1  *
+ * 18 is the height of status bar,                      *
+ * 200 is the height of the screen                      *
+ * 2 means 1 pixel 2 scan lines                         *
+                                                        */
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
     0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
     0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
@@ -311,7 +318,7 @@ int set_mode_X(void (*horiz_fill_fn)(int, int, unsigned char[SCROLL_X_DIM]),
         build[BUILD_BUF_SIZE + MEM_FENCE_WIDTH + i] = MEM_FENCE_MAGIC;
     }
 
-    /* One display page goes at the start of video memory. */
+    /* One display page goes after memories of status bar. */
     target_img = BAR_SIZE;
 
     /* Map video memory and obtain permission for VGA port access. */
@@ -1111,12 +1118,22 @@ static void copy_image(unsigned char* img, unsigned short scr_addr) {
     );
 }
 
+/*
+ * copy_bar
+ *   DESCRIPTION: Copy one plane of the status bar from the status bar buffer to the
+ *                0 address of the video memory.
+ *   INPUTS: bar_start -- a pointer to the start of the status bar buffer
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies a plane from the status bar buffer to video memory
+ */
 static void copy_bar(unsigned char* bar_start) {
     /*
      * memcpy is actually probably good enough here, and is usually
      * implemented using ISA-specific features like those below,
      * but the code here provides an example of x86 string moves
      */
+    /* actual status bar size is 1440 (width*height/4 = 320*182/4) */
     asm volatile ("                                             \n\
         cld                                                     \n\
         movl $1440,%%ecx                                        \n\
