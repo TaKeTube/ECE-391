@@ -21,3 +21,9 @@ NAME      : Zimu
 TIME      : 20-3-7
 BUG       : Fruit would not update immediately when the player touch the center of it. (would only update when player is moving)
 SOLUTION  : Show the screen every update whatever the redraw is.
+
+5.
+NAME      : Zimu
+TIME      : 20-3-11
+BUG       : Player color changing irregularly. It is because I thought colors are 8bit instead of 6bit.
+SOLUTION  : Set colors in 6 bits.

@@ -142,6 +142,7 @@ static void set_CRTC_registers(unsigned short table[NUM_CRTC_REGS]);
 static void set_attr_registers(unsigned char table[NUM_ATTR_REGS * 2]);
 static void set_graphics_registers(unsigned short table[NUM_GRAPHICS_REGS]);
 static void fill_palette();
+static void set_palette(unsigned char R, unsigned char G, unsigned char B, unsigned char id);
 static void write_font_data();
 static void set_text_mode_3(int clear_scr);
 static void copy_image(unsigned char* img, unsigned short scr_addr);
@@ -648,6 +649,47 @@ void show_bar() {
     }
 }
 
+void player_color_update() {
+    static int i = 0;
+    static unsigned char R = 0x3F;
+    static unsigned char G = 0x00;
+    static unsigned char B = 0x00;
+
+    int max_num = 63;
+
+    if (i < max_num)
+        set_palette(R, G++, B, PLAYER_CENTER_COLOR);
+    else if (i < max_num*2)
+        set_palette(R--, G, B, PLAYER_CENTER_COLOR);
+    else if (i < max_num*3)
+        set_palette(R, G, B++, PLAYER_CENTER_COLOR);
+    else if (i < max_num*4)
+        set_palette(R, G--, B, PLAYER_CENTER_COLOR);
+    else if (i < max_num*5)
+        set_palette(R++, G, B, PLAYER_CENTER_COLOR);
+    else if (i < max_num*6)
+        set_palette(R, G, B--, PLAYER_CENTER_COLOR);
+    else{
+        i = 0;
+        return;
+    }
+    i++;
+}
+
+void wall_color_update(int level) {
+    static unsigned char wall_colors[10][3] = {
+        {0x00,0x00,0x3F},{0x00,0x00,0x1F},{0x00,0x3F,0x00},
+        {0x00,0x1F,0x00},{0x3F,0x00,0x00},{0x1F,0x00,0x00},
+        {0x00,0x3F,0x3F},{0x00,0x1F,0x3F},{0x3F,0x3F,0x00},
+        {0x3F,0x1F,0x00}};
+
+    unsigned char R = wall_colors[level][0];
+    unsigned char G = wall_colors[level][1];
+    unsigned char B = wall_colors[level][2];
+
+    set_palette(R, G, B, WALL_FILL_COLOR);
+}
+
 /*
  * draw_full_block
  *   DESCRIPTION: Draw a BLOCK_X_DIM x BLOCK_Y_DIM block at absolute
@@ -1021,6 +1063,13 @@ static void fill_palette() {
 
     /* Write all 64 colors from array. */
     REP_OUTSB(0x03C9, palette_RGB, 64 * 3);
+}
+
+static void set_palette(unsigned char R, unsigned char G, unsigned char B, unsigned char id) {
+    unsigned char palette_RGB[3] = {R,G,B};
+    
+    OUTB(0x03C8, id);
+    REP_OUTSB(0x03C9, palette_RGB, 3);
 }
 
 /*

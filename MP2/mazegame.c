@@ -413,6 +413,9 @@ static void *rtc_thread(void *arg) {
         // set status bar color for this level
         bar_color = 0x0F;
 
+        // update the wall color according to the level
+        wall_color_update(level);
+
         // initialize status bar
         init_bar(bar_color);
         set_level_text(level);
@@ -483,6 +486,9 @@ static void *rtc_thread(void *arg) {
             else {
                 goodcount++;
             }
+
+            // update player center color in a color loop
+            player_color_update();
 
             // update status text and show
             curr_time = time(NULL);
