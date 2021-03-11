@@ -39,6 +39,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
 #include <sys/mman.h>
@@ -192,12 +193,6 @@ static unsigned short target_img;   /* offset of displayed screen image */
 
 static unsigned char bar[BAR_SIZE];                     /* buffer for status bar, also has 4 plane      */
 static char status[] = "Level 1    0 Fruit    00:00";   /* text which should be displayed on status bar */
-
-/* string index in status string */
-#define LEVEL_POS     6             /* index of the level               */
-#define FRUIT_NUM_POS 11            /* index of the fruit number        */
-#define FRUIT_ODD_POS 18
-#define TIME_POS      22            /* index of the left most time char */
 
 /*
  * functions provided by the caller to set_mode_X() and used to obtain
@@ -649,14 +644,27 @@ void show_bar() {
     }
 }
 
+/*
+ * player_color_update
+ *   DESCRIPTION: update the player color once in a color cycle every time it is called
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: change the palette color in VGA corresponding to the PLAYER_CENTER_COLOR;
+ */
 void player_color_update() {
-    static int i = 0;
-    static unsigned char R = 0x3F;
-    static unsigned char G = 0x00;
-    static unsigned char B = 0x00;
+    static int i = 0;               /* Index of current color in color cycle */
+    static unsigned char R = 0x3F;  /* R value of current color */
+    static unsigned char G = 0x00;  /* G value of current color */
+    static unsigned char B = 0x00;  /* B value of current color */
 
+    /* max index of R/G/B value */
     int max_num = 63;
 
+    /* update the transparent version of player color */
+    set_palette((R+WHITE_RGB)/2, (G+WHITE_RGB)/2, (B+WHITE_RGB)/2, PLAYER_CENTER_COLOR+COLOR_OFFSET);
+
+    /* move forward one step in color cycle each time when function is called */
     if (i < max_num)
         set_palette(R, G++, B, PLAYER_CENTER_COLOR);
     else if (i < max_num*2)
@@ -673,21 +681,35 @@ void player_color_update() {
         i = 0;
         return;
     }
+    /* update the color index in each call */
     i++;
 }
 
+/*
+ * wall_color_update
+ *   DESCRIPTION: update the wall color once in a color cycle according to the level
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: change the palette color in VGA corresponding to the WALL_FILL_COLOR;
+ */
 void wall_color_update(int level) {
+    /* wall color array for each level */
     static unsigned char wall_colors[10][3] = {
         {0x00,0x00,0x3F},{0x00,0x00,0x1F},{0x00,0x3F,0x00},
         {0x00,0x1F,0x00},{0x3F,0x00,0x00},{0x1F,0x00,0x00},
         {0x00,0x3F,0x3F},{0x00,0x1F,0x3F},{0x3F,0x3F,0x00},
         {0x3F,0x1F,0x00}};
 
+    /* get current level wall color */
     unsigned char R = wall_colors[level][0];
     unsigned char G = wall_colors[level][1];
     unsigned char B = wall_colors[level][2];
 
+    /* update the wall color */
     set_palette(R, G, B, WALL_FILL_COLOR);
+    /* update the transparent version of wall color */
+    set_palette((R+WHITE_RGB)/2, (G+WHITE_RGB)/2, (B+WHITE_RGB)/2, WALL_FILL_COLOR+COLOR_OFFSET);
 }
 
 /*
@@ -753,6 +775,178 @@ void draw_full_block(int pos_x, int pos_y, unsigned char* blk) {
             (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
         pos_x -= x_right;
         blk += x_left;
+    }
+}
+
+/*
+ * rw_full_image
+ *   DESCRIPTION: Draw or read a width x height image at absolute
+ *                coordinates.  Mask any portion of the image not inside
+ *                the logical view window.
+ *   INPUTS: (pos_x,pos_y) -- coordinates of upper left corner of image
+ *           blk -- image data for block (one byte per pixel, as a C array
+ *                  of dimensions [BLOCK_Y_DIM][BLOCK_X_DIM])
+ *           width -- width of the image
+ *           height -- height of the image
+ *           read -- read if read is 1 (Read mode), write if read is 0 (Write mode)
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: draws into the build buffer
+ */
+void rw_full_image(int pos_x, int pos_y, int width, int height, unsigned char* blk, int read) {
+    int dx, dy;          /* loop indices for x and y traversal of image */
+    int x_left, x_right; /* clipping limits in horizontal dimension     */
+    int y_top, y_bottom; /* clipping limits in vertical dimension       */
+
+    if(blk == NULL) return;
+
+    /* If image is completely off-screen, we do nothing. */
+    if (pos_x + width <= show_x || pos_x >= show_x + SCROLL_X_DIM ||
+        pos_y + height <= show_y || pos_y >= show_y + SCROLL_Y_DIM)
+        return;
+
+    /* Clip any pixels falling off the left side of screen. */
+    if ((x_left = show_x - pos_x) < 0)
+        x_left = 0;
+    /* Clip any pixels falling off the right side of screen. */
+    if ((x_right = show_x + SCROLL_X_DIM - pos_x) > width)
+        x_right = width;
+    /* Skip the first x_left pixels in both screen position and image data. */
+    pos_x += x_left;
+    blk += x_left;
+
+    /*
+     * Adjust x_right to hold the number of pixels to be read/drawn, and x_left
+     * to hold the amount to skip between rows in the image, which is the
+     * sum of the original left clip and (width - the original right
+     * clip).
+     */
+    x_right -= x_left;
+    x_left = width - x_right;
+
+    /* Clip any pixels falling off the top of the screen. */
+    if ((y_top = show_y - pos_y) < 0)
+        y_top = 0;
+    /* Clip any pixels falling off the bottom of the screen. */
+    if ((y_bottom = show_y + SCROLL_Y_DIM - pos_y) > height)
+        y_bottom = height;
+    /*
+     * Skip the first y_left pixel in screen position and the first
+     * y_left rows of pixels in the image data.
+     */
+    pos_y += y_top;
+    blk += y_top * width;
+    /* Adjust y_bottom to hold the number of pixel rows to be read/drawn. */
+    y_bottom -= y_top;
+
+    /* Read/write the clipped image. */
+    for (dy = 0; dy < y_bottom; dy++, pos_y++) {
+        for (dx = 0; dx < x_right; dx++, pos_x++, blk++){
+            if(read)
+                /* read if it is read mode */
+                *blk = *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +
+                (3 - (pos_x & 3)) * SCROLL_SIZE);
+            else
+                /* write if it is write mode */
+                *(img3 + (pos_x >> 2) + pos_y * SCROLL_X_WIDTH +
+                (3 - (pos_x & 3)) * SCROLL_SIZE) = *blk;
+        }
+        pos_x -= x_right;
+        blk += x_left;
+    }
+}
+
+/*
+ * draw_fruit_text
+ *   DESCRIPTION: Two modes. Draw mode and Undraw mode.
+ *                Draw mode: Draw a floating text into the build buffer according to the player 
+ *                           upper left logical position (play_x,play_y), and the type of the fruit.
+ *                Undraw mode: Undraw the text using static data stored in previous draw.
+ *                Mask any portion of the text image not inside the logical view window.
+ *   INPUTS: (play_x,play_y) -- coordinates of upper left corner of the player
+ *           fnum -- fruit number
+ *           draw -- draw if draw is 1 (draw mode), undraw if draw is 0 (undraw mode)
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: draws into the build buffer
+ */
+void draw_fruit_text(int play_x, int play_y, int fnum, int draw){
+    /* strings of floating text corrsponding to the fruit */
+    static char* fruit_strings[NUM_FRUIT_TYPES] = {
+        "an apple!",
+        "ew, grapes",
+        "eh, it's a peach", 
+        "a strawberry",
+        "A BANANA!",
+        "melonwater",
+        "Uh...Dew?"
+    };
+
+    static int text_x = 0;                     /* x position of the upper left corner of the floating text */
+    static int text_y = 0;                     /* y position of the upper left corner of the floating text */
+    static int text_width = 0;                 /* pixel width of text image */
+    static int text_height = 0;                /* pixel height of text image */
+    static unsigned char* bg = NULL;           /* pointer to the buffer of the background of the text */
+
+    int text_len;                   /* number of characters in the text string */
+    char* fruit_text;               /* pointer to the text needed to be display */
+    unsigned char* bg_with_text;    /* pointer to the buffer of the text image with the background */
+    
+    /* if fruit number is out of valid range, return */
+    if(fnum < 1 || fnum > NUM_FRUIT_TYPES) return;
+
+    if(!draw){
+        /* Undraw mode, undraw text with background */
+        if(bg != NULL){
+            /* undraw the floating text according to the static data saved in last call (previous draw) */
+            rw_full_image(text_x, text_y, text_width, text_height, bg, WRITE_MODE);
+        /* free the background data & clear data */
+            free(bg);
+            bg = NULL;
+        }
+        text_x = 0;
+        text_y = 0;
+        text_width = 0;
+        text_width = 0;
+    }else{
+        /* Draw mode, draw the floating text */
+        /* initialize the text properties */
+        fruit_text = fruit_strings[fnum-1];
+        text_len = strlen(fruit_text);
+        text_width = FONT_WIDTH*text_len;
+        text_height = FONT_HEIGHT;
+
+        /* Allocate the memory for background and text-with-background buffer */
+        bg = (unsigned char *)malloc(sizeof(unsigned char)*text_width*text_height);
+        bg_with_text = (unsigned char *)malloc(sizeof(unsigned char)*text_width*text_height);
+
+        /* 
+         *  set the x coordinates of the upper left corner of the text image 
+         *  to make the text centered with player
+         */
+        text_x = play_x + BLOCK_X_DIM/2 - text_width/2;
+        /* 
+         *  set the y coordinates of the upper left corner of the text image
+         *  to make the text upper the player by 2 BLOCK_Y_DIM - 1 pixels
+         *  however, the text would not across the screen upper bound 
+         */
+        if((text_y = play_y - 2*BLOCK_Y_DIM - 1) < BLOCK_Y_DIM)
+            text_y = BLOCK_Y_DIM;
+        
+        /* read the text background from the build buffer */
+        rw_full_image(text_x, text_y, text_width, text_height, bg, READ_MODE);
+
+        /* copy background to bg_with_text to add transparent text */
+        memcpy(bg_with_text, bg, sizeof(unsigned char)*text_width*text_height);
+
+        /* Add transparent text into the buffer */
+        add_transparent_text(fruit_text, bg_with_text);
+
+        /* draw the floating text with the background into the build buffer */
+        rw_full_image(text_x, text_y, text_width, text_height, bg_with_text, WRITE_MODE);
+        /* free the memory */
+        free(bg_with_text);
+        bg_with_text = NULL;
     }
 }
 
@@ -1022,6 +1216,10 @@ static void set_graphics_registers(unsigned short table[NUM_GRAPHICS_REGS]) {
  *   SIDE EFFECTS: changes the first 64 palette colors
  */
 static void fill_palette() {
+    int i;      /* loop index in transparency color interpolation */
+    unsigned char transparent_RGB[3] = { 0x00, 0x00, 0x00 };    /* temp array of transparent color */
+
+
     /* 6-bit RGB (red, green, blue) values for first 64 colors */
     static unsigned char palette_RGB[64][3] = {
         { 0x00, 0x00, 0x00 },{ 0x00, 0x00, 0x2A },   /* palette 0x00 - 0x0F    */
@@ -1063,12 +1261,35 @@ static void fill_palette() {
 
     /* Write all 64 colors from array. */
     REP_OUTSB(0x03C9, palette_RGB, 64 * 3);
+
+    /* get the transparent color of the first 64 colors */
+    for (i = 0; i < 64; i++){
+        /* 0x3F is the RGB value of white */
+        /* do the interpolation with white color */
+        transparent_RGB[0] = (palette_RGB[i][0] + WHITE_RGB)/2;
+        transparent_RGB[1] = (palette_RGB[i][1] + WHITE_RGB)/2;
+        transparent_RGB[2] = (palette_RGB[i][2] + WHITE_RGB)/2;
+        /* write color */
+        OUTB(0x03C8, COLOR_OFFSET+i);
+        REP_OUTSB(0x03C9, transparent_RGB, 3);
+    }
 }
 
+/*
+ * set_palette
+ *   DESCRIPTION: Change one color identified by the id according to input RGB values in VGA palette.
+ *   INPUTS: (R, G, B) -- RGB values of the set color
+ *           id -- index of the color needed to be set in palette
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: changes the palette colors of index id
+ */
 static void set_palette(unsigned char R, unsigned char G, unsigned char B, unsigned char id) {
+    /* temp RGB array for the convenience of writing */
     unsigned char palette_RGB[3] = {R,G,B};
-    
+    /* write into id */
     OUTB(0x03C8, id);
+    /* write RGB color */
     REP_OUTSB(0x03C9, palette_RGB, 3);
 }
 

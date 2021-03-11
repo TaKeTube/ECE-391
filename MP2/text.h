@@ -47,4 +47,7 @@ extern unsigned char font_data[256][16];
 /* Add text directly into the status bar */
 extern int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, unsigned char bg_color);
 
+/* Add transparent text into the image */
+extern int add_transparent_text(char* str, unsigned char* buffer);
+
 #endif /* TEXT_H */

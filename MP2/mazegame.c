@@ -99,7 +99,7 @@ static void move_up(int* ypos);
 static void move_right(int* xpos);
 static void move_down(int* ypos);
 static void move_left(int* xpos);
-static int unveil_around_player(int play_x, int play_y);
+static int unveil_around_player(int play_x, int play_y, int* fnum);
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
 
@@ -263,13 +263,13 @@ static void move_left(int* xpos) {
  *                 consumed fruit, and maze exit; consumes fruit and
  *                 updates displayed fruit counts
  */
-static int unveil_around_player(int play_x, int play_y) {
+static int unveil_around_player(int play_x, int play_y, int* fnum) {
     int x = play_x / BLOCK_X_DIM; /* player's maze lattice position */
     int y = play_y / BLOCK_Y_DIM;
     int i, j;            /* loop indices for unveiling maze squares */
 
     /* Check for fruit at the player's position. */
-    (void)check_for_fruit (x, y);
+    *fnum = check_for_fruit (x, y);
 
     /* Unveil spaces around the player. */
     for (i = -1; i < 2; i++)
@@ -391,6 +391,9 @@ static void *rtc_thread(void *arg) {
     int ticks = 0;
     int level;
     int ret;
+    int fnum = 0;
+    int fruit_type = 0;
+    int get_fruit_time;
     int begin_time;
     int curr_time;
     int open[NUM_DIRS];
@@ -398,7 +401,7 @@ static void *rtc_thread(void *arg) {
     int goto_next_level = 0;
     unsigned char bar_color;
     unsigned char *player_with_bg = NULL;
-    unsigned char *bg = NULL;
+    unsigned char *bg_for_player = NULL;
 
     // Loop over levels until a level is lost or quit.
     for (level = 1; (level <= MAX_LEVEL) && (quit_flag == 0); level++) {
@@ -415,12 +418,10 @@ static void *rtc_thread(void *arg) {
 
         // update the wall color according to the level
         wall_color_update(level);
-
         // initialize status bar
         init_bar(bar_color);
         set_level_text(level);
         set_fruit_number_text(get_fruit_num());
-
         // show status bar (copy to video memory)
         show_status(bar_color,0x02);
 
@@ -440,14 +441,15 @@ static void *rtc_thread(void *arg) {
         next_dir = DIR_STOP;
 
         // Show maze around the player's original position
-        (void)unveil_around_player(play_x, play_y);
+        (void)unveil_around_player(play_x, play_y, &fnum);
+        fnum = 0;
 
         // Buffers for image with palyer and background and only background
-        bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+        bg_for_player = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
         player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
 
         // Write image into player with background buffer.
-        get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
+        get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg_for_player);
 
         // draw_full_block(play_x, play_y, get_player_block(last_dir));
         draw_full_block(play_x, play_y, player_with_bg);
@@ -455,13 +457,13 @@ static void *rtc_thread(void *arg) {
         show_screen();
 
         // undraw the palyer
-        draw_full_block(play_x, play_y, bg);
+        draw_full_block(play_x, play_y, bg_for_player);
 
         // free the pointers
         free(player_with_bg);
         player_with_bg = NULL;
-        free(bg);
-        bg = NULL;
+        free(bg_for_player);
+        bg_for_player = NULL;
 
         // get first Periodic Interrupt
         ret = read(fd, &data, sizeof(unsigned long));
@@ -521,20 +523,21 @@ static void *rtc_thread(void *arg) {
                 if (move_cnt == 0) {
                     // The player has reached a new maze square; unveil nearby maze
                     // squares and check whether the player has won the level.
-                    if (unveil_around_player(play_x, play_y)) {
+                    // check whether there is a fruit
+                    if (unveil_around_player(play_x, play_y, &fnum)) {
                         pthread_mutex_unlock(&mtx);
                         goto_next_level = 1;
                         break;
                     }
-                
+
                     // Record directions open to motion.
                     find_open_directions (play_x / BLOCK_X_DIM, play_y / BLOCK_Y_DIM, open);
-        
+
                     // Change dir to next_dir if next_dir is open 
                     if (open[next_dir]) {
                         dir = next_dir;
                     }
-    
+
                     // The direction may not be open to motion...
                     //   1) ran into a wall
                     //   2) initial direction and its opposite both face walls
@@ -571,49 +574,48 @@ static void *rtc_thread(void *arg) {
                             move_left(&play_x);
                             break;
                     }
-                    /* allocate spaces for background buffer and player with background buffer*/
-                    bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
-                    player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
-                    /* write image into buffers*/
-                    get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
-                    /* Draw palyer with background */
-                    draw_full_block(play_x, play_y, player_with_bg);
-                    /* free the pointer */
-                    free(player_with_bg);
-                    player_with_bg = NULL;
                     need_redraw = 1;
                 }
             }
-            if (need_redraw){
-                show_screen();
-                /* Undraw the player if he has moved. */
-                if (bg != NULL){
-                    draw_full_block(play_x, play_y, bg);
-                    /* free the pointer */
-                    free(bg);
-                    bg = NULL;
-                }
-            } else {
-                /* update the screen even if the player is not moving */
-                /* allocate spaces for background buffer and player with background buffer*/
-                bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
-                player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
-                /* write image into buffers*/
-                get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg);
-                /* Draw palyer with background */
-                draw_full_block(play_x, play_y, player_with_bg);
-                /* free the pointer */
-                free(player_with_bg);
-                player_with_bg = NULL;
-                show_screen();
-                /* Undraw the player if he has moved. */
-                if (bg != NULL){
-                    draw_full_block(play_x, play_y, bg);
-                    /* free the pointer */
-                    free(bg);
-                    bg = NULL;
-                }
+            /* update the screen even if the player is not moving */
+            /* allocate spaces for background buffer and player with background buffer*/
+            bg_for_player = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+            player_with_bg = (unsigned char *)malloc(sizeof(unsigned char)*BLOCK_X_DIM*BLOCK_Y_DIM);
+            /* write image into buffers*/
+            get_player_with_background(play_x, play_y, last_dir, player_with_bg, bg_for_player);
+            /* Draw palyer with background */
+            draw_full_block(play_x, play_y, player_with_bg);
+            /* free the pointer */
+            free(player_with_bg);
+            player_with_bg = NULL;
+
+            /* check whether eat a fruit */
+            if (fnum != 0){
+                fruit_type = fnum;
+                get_fruit_time = time(NULL);
             }
+            /* Draw the floating text to the plane */
+            if (fruit_type)
+                draw_fruit_text(play_x, play_y, fruit_type, DRAW_MODE);
+
+            /* show the screen */
+            show_screen();
+            
+            /* Undraw the player */
+            if (bg_for_player != NULL){
+                draw_full_block(play_x, play_y, bg_for_player);
+                /* free the pointer */
+                free(bg_for_player);
+                bg_for_player = NULL;
+            }
+
+            /* Undraw the floating text */
+            if (fruit_type)
+                draw_fruit_text(play_x, play_y, fruit_type, UNDRAW_MODE);
+
+            /* keep the floating text for 3 seconds */
+            if (curr_time - get_fruit_time > 3)
+                fruit_type = 0;
 
             need_redraw = 0;
         }    

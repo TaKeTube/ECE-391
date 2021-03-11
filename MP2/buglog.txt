@@ -27,3 +27,15 @@ NAME      : Zimu
 TIME      : 20-3-11
 BUG       : Player color changing irregularly. It is because I thought colors are 8bit instead of 6bit.
 SOLUTION  : Set colors in 6 bits.
+
+6.
+NAME      : Zimu
+TIME      : 20-3-11
+BUG       : No text for dew
+SOLUTION  : fnum should begin at 1 but not 0. Set index of fruit string array to fnum - 1
+
+7.
+NAME      : Zimu
+TIME      : 20-3-11
+BUG       : player is above the transparent text
+SOLUTION  : change the order of draw player and draw text 

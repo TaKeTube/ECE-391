@@ -573,7 +573,7 @@ unsigned char font_data[256][16] = {
  *                for the sake of drawing). Finally, judge whether this pixel should
  *                be shown depends on whether the pixel in the char or the background.
  *   INPUTS: str        -- pointer points to the string which should be displayed
- *           bar        -- pointer points to the status bar buffer with has the size of
+ *           bar        -- pointer points to the status bar buffer with has the size of BAR_SIZE
  *           char_color -- color of the text displayed on status bar
  *           bg_color   -- color of the background of status bar
  *   OUTPUTS: none
@@ -600,7 +600,7 @@ int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, uns
     length = strlen(str);
 
     /* per character is 8 pixel wide; */
-    max_number = BAR_X_DIM / 8;
+    max_number = BAR_X_DIM / FONT_WIDTH;
 
     /* 
      * if length of string is out of range (max number of charater in status bar),
@@ -613,7 +613,7 @@ int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, uns
      *  to make the string centered in status bar. If the number of character
      *  is odd, offset half character for all characters to make them centered
      */
-    x_start = (max_number/2-length/2)*8-((length%2)?0:4);
+    x_start = (max_number/2-length/2)*FONT_WIDTH-((length%2)?0:FONT_WIDTH/2);
     x_cur = x_start;
 
     /* skip first line of the bar */
@@ -626,19 +626,72 @@ int add_text_to_bar(char* str, unsigned char* bar, unsigned char char_color, uns
         /* get ascii of current char */
         ascii = (int)str[i];
         /* loop over height of a char */
-        for(j = 0; j < 16; j++){
+        for(j = 0; j < FONT_HEIGHT; j++){
             /* loop over width of a char */
-            for(k = 0; k < 8; k++){
+            for(k = 0; k < FONT_WIDTH; k++){
                 /* using the image coordinate to get the bar address */
                 addr = ((x_cur+k) >> 2) + j * BAR_X_WIDTH;
                 p_off = ((x_cur+k) & 3);
                 /* pick out each bit in bitmap of the char */
                 /* 0x01 is a filter of the first bit       */
-                bar[addr+p_off*bar_plane_size] = (font_data[ascii][j]>>(7-k))&(0x01)?(char_color):(bg_color);
+                bar[addr+p_off*bar_plane_size] = (font_data[ascii][j]>>(FONT_WIDTH-1-k))&(0x01)?(char_color):(bg_color);
             }
         }
         /* go to next char */
-        x_cur += 8;
+        x_cur += FONT_WIDTH;
+    }
+
+    return 0;
+}
+
+/*
+ * add_transparent_text
+ *   DESCRIPTION: Add a transparent text into the given image. Traverse the string
+ *                to draw each character on the image. For each pixel, 
+ *                first find the coordinates of the pixel in the image,
+ *                then judge whether this pixel should be shown in a transparent color
+ *                depends on whether the pixel in the char or the background.
+ *   INPUTS: str        -- pointer points to the string which should be displayed
+ *           buffer     -- pointer points to the image buffer needed to be draw
+ *   OUTPUTS: none
+ *   RETURN VALUE: 0 on success, -1 on fail
+ *   SIDE EFFECTS: none
+ */
+int add_transparent_text(char* str, unsigned char* buffer){
+    int length;         /* length of the string */
+    int ascii;          /* ascii of current character */
+    int x_cur;          /* pixel x coordinate of the current character in the image */
+    int addr;           /* addr of the pixel in buffer */
+    int i;              /* loop index for traversing the string */
+    int j;              /* loop index for traversing the height of character */
+    int k;              /* loop index for traversing the width of character */
+    
+    /* invalid bar pointer, return -1 */
+    if(str == NULL || buffer == NULL) return -1;
+
+    /* get the string length */
+    length = strlen(str);
+
+    /* initialize current pixel x coordinates */
+    x_cur = 0;
+
+    /* loop over all charater and directly draw char in the status bar */
+    for(i = 0; i < length; i++){
+        /* get ascii of current char */
+        ascii = (int)str[i];
+        /* loop over height of a char */
+        for(j = 0; j < FONT_HEIGHT; j++){
+            /* loop over width of a char */
+            for(k = 0; k < FONT_WIDTH; k++){
+                /* get the real address of the pixel in the buffer */
+                addr = x_cur+k+j*length*FONT_WIDTH;
+                /* if current pixel should be drawn, draw the transparent color */
+                if((font_data[ascii][j]>>(FONT_WIDTH-1-k))&(0x01))
+                    buffer[addr] = buffer[addr]+COLOR_OFFSET;
+            }
+        }
+        /* go to next char */
+        x_cur += FONT_WIDTH;
     }
 
     return 0;

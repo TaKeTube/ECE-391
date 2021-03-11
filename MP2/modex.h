@@ -58,6 +58,23 @@
 #define SCROLL_Y_DIM    IMAGE_Y_DIM - BAR_Y_DIM    /* full image width      */
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 
+/* string index in status string */
+#define LEVEL_POS     6             /* index of the level               */
+#define FRUIT_NUM_POS 11            /* index of the fruit number        */
+#define FRUIT_ODD_POS 18
+#define TIME_POS      22            /* index of the left most time char */
+
+/* Macro relates to color */
+#define WHITE_RGB       0x3F        /* white rgb value for interpolation  */
+#define COLOR_OFFSET    0x40        /* offset for transparency color (64) */
+
+/* mode code of rw functions */
+#define READ_MODE       1
+#define WRITE_MODE      0
+/* mode code of draw/undraw function */
+#define DRAW_MODE       1
+#define UNDRAW_MODE     0
+
 /*
  * NOTES
  *
@@ -156,6 +173,18 @@ extern void wall_color_update(int level);
  * is clipped (cut off and not drawn)
  */
 extern void draw_full_block(int pos_x, int pos_y, unsigned char* blk);
+
+/*
+ * draw or read a widthxheight image with upper left corner at logical position
+ * (pos_x,pos_y); any part of the block outside of the logical view window
+ * is clipped (cut off and not drawn/read)
+ */
+extern void rw_full_image(int pos_x, int pos_y, int width, int height, unsigned char* blk, int read);
+
+/* draw the floating fruit text into the build buffer according to the player upper left logical position
+ * (play_x,play_y), and the type of the fruit if it is the draw mode
+ * else undraw the text using static data stored in previous draw */
+extern void draw_fruit_text(int play_x, int play_y, int fnum, int draw);
 
 /* draw a horizontal line at vertical pixel y within the logical view window */
 extern int draw_horiz_line(int y);
