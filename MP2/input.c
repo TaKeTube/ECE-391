@@ -52,14 +52,20 @@
 #include "input.h"
 #include "maze.h"
 
+#include "module/tuxctl-ioctl.h"
+
+dir_t get_tux_button();
+
 /* set to 1 and compile this file by itself to test functionality */
 #define TEST_INPUT_DRIVER  1
 
 /* set to 1 to use tux controller; otherwise, uses keyboard input */
-#define USE_TUX_CONTROLLER 0
+#define USE_TUX_CONTROLLER 1
 
 /* stores original terminal settings */
 static struct termios tio_orig;
+
+static int fd;
 
 /* 
  * init_input
@@ -75,6 +81,7 @@ static struct termios tio_orig;
  */
 int init_input() {
     struct termios tio_new;
+    int ldisc_num;
 
     /*
      * Set non-blocking mode so that stdin can be read without blocking
@@ -106,6 +113,12 @@ int init_input() {
         perror("tcsetattr to set stdin terminal settings");
         return -1;
     }
+
+    fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
+    ldisc_num = N_MOUSE;
+    ioctl(fd, TIOCSETD, &ldisc_num);
+    /* initialize the controller */
+    ioctl(fd, TUX_INIT);
 
     /* Return success. */
     return 0;
@@ -167,8 +180,12 @@ cmd_t get_command(dir_t cur_dir) {
         }
         state = 0;
     }
+#else
+
 #endif
     }
+
+    pushed = get_tux_button();
 
     /*
      * Once a direction is pushed, that command remains active
@@ -182,6 +199,30 @@ cmd_t get_command(dir_t cur_dir) {
     return command;
 }
 
+dir_t get_tux_button() {
+    unsigned char button = 0;
+
+    ioctl(fd, TUX_BUTTONS, &button);
+
+    switch(button & 0xFF)
+    {
+        //right:
+        case 0x80:
+            return DIR_RIGHT;
+        //left:
+        case 0x40:
+            return DIR_LEFT;
+        //down
+        case 0x20:
+            return DIR_DOWN;
+        //up
+        case 0x10:
+            return DIR_UP;
+        default:
+            return DIR_STOP;
+    }
+}
+
 /* 
  * shutdown_input
  *   DESCRIPTION: Cleans up state associated with input control.  Restores
@@ -193,6 +234,7 @@ cmd_t get_command(dir_t cur_dir) {
  */
 void shutdown_input() {
     (void)tcsetattr(fileno(stdin), TCSANOW, &tio_orig);
+    close(fd);
 }
 
 /* 
@@ -206,7 +248,38 @@ void shutdown_input() {
  */
 void display_time_on_tux(int num_seconds) {
 #if (USE_TUX_CONTROLLER != 0)
-#error "Tux controller code is not operational yet."
+// #error "Tux controller code is not operational yet."
+    int min;        /* minute */
+    int second;     /* second */
+    unsigned long time = 0;
+
+    second = num_seconds%60;
+    min = (num_seconds/60)%60;
+    
+    /* set displayed characters */
+    time = ((min/10)<<12)|((min%10)<<8)|((second/10)<<4)|(second%10);
+    /* set mask */
+    time |= ((min<10)?0x7:0xF)<<16;
+    /* set decimal */
+    time |= 0x4<<24;
+
+    ioctl(fd, TUX_SET_LED, time);
+#endif
+}
+
+void display_on_tux() {
+#if (USE_TUX_CONTROLLER != 0)
+// #error "Tux controller code is not operational yet."
+    unsigned long data;
+    
+    /* set displayed characters */
+    data = (0x9<<12)|(0x8<<8)|(0x7<<4)|(0x6%10);
+    /* set mask */
+    data |= (0xF)<<16;
+    /* set decimal */
+    data |= 0x2<<24;
+
+    ioctl(fd, TUX_SET_LED, data);
 #endif
 }
 
@@ -234,6 +307,7 @@ int main() {
         if (cmd == CMD_QUIT)
             break;
         display_time_on_tux(83);
+        // display_on_tux();
         printf ("%s\n", cmd_name[cmd]);
         dir = (dir + cmd) % 4;
     }
