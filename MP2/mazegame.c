@@ -40,6 +40,7 @@
 #include "maze.h"
 #include "modex.h"
 #include "text.h"
+#include "module/tuxctl-ioctl.h"
 
 // New Includes and Defines
 #include <linux/rtc.h>
@@ -102,6 +103,8 @@ static void move_left(int* xpos);
 static int unveil_around_player(int play_x, int play_y, int* fnum);
 static void *rtc_thread(void *arg);
 static void *keyboard_thread(void *arg);
+static void *tux_thread(void *arg);
+static void display_time_on_tux(int num_seconds);
 
 /* 
  * prepare_maze_level
@@ -314,9 +317,48 @@ int next_dir = UP;
 int play_x, play_y, last_dir, dir;
 int move_cnt = 0;
 int fd;
+int button_pressed;
 unsigned long data;
+unsigned long buttons;
+static int fd_tux;
 static struct termios tio_orig;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+
+static void *tux_thread(void *arg) {
+    while(winner == 0 && quit_flag == 0){
+        pthread_mutex_lock(&mtx);
+        while(!button_pressed){
+            pthread_cond_wait(&cv, &mtx);
+        }
+        // TODO
+        ioctl(fd_tux, TUX_BUTTONS, &buttons);
+
+        switch(buttons & 0xFF)
+        {
+            //right:
+            case 0x80:
+                next_dir = DIR_RIGHT;
+                break;
+            //left:
+            case 0x40:
+                next_dir = DIR_LEFT;
+                break;
+            //down
+            case 0x20:
+                next_dir = DIR_DOWN;
+                break;
+            //up
+            case 0x10:
+                next_dir = DIR_UP;
+                break;
+            default:
+                break;
+        }
+        pthread_mutex_unlock(&mtx);
+    }
+    return NULL;
+}
 
 /*
  * keyboard_thread
@@ -372,6 +414,33 @@ static void *keyboard_thread(void *arg) {
     }
 
     return 0;
+}
+
+/* 
+ * display_time_on_tux
+ *   DESCRIPTION: Show number of elapsed seconds as minutes:seconds
+ *                on the Tux controller's 7-segment displays.
+ *   INPUTS: num_seconds -- total seconds elapsed so far
+ *   OUTPUTS: none
+ *   RETURN VALUE: none 
+ *   SIDE EFFECTS: changes state of controller's display
+ */
+static void display_time_on_tux(int num_seconds) {
+    int min;        /* minute */
+    int second;     /* second */
+    unsigned long time = 0;
+
+    second = num_seconds%60;
+    min = (num_seconds/60)%60;
+    
+    /* set displayed characters */
+    time = ((min/10)<<12)|((min%10)<<8)|((second/10)<<4)|(second%10);
+    /* set mask */
+    time |= ((min<10)?0x7:0xF)<<16;
+    /* set decimal */
+    time |= 0x4<<24;
+
+    ioctl(fd_tux, TUX_SET_LED, time);
 }
 
 /* some stats about how often we take longer than a single timer tick */
@@ -489,6 +558,16 @@ static void *rtc_thread(void *arg) {
                 goodcount++;
             }
 
+            ioctl(fd_tux, TUX_BUTTONS, &buttons);
+            // TODO
+            button_pressed = (buttons&0xFF)?1:0;
+
+            pthread_mutex_lock(&mtx);
+            if (button_pressed){
+                pthread_cond_signal(&cv);
+            }
+            pthread_mutex_unlock(&mtx);
+
             // update player center color in a color loop
             player_color_update();
 
@@ -497,6 +576,8 @@ static void *rtc_thread(void *arg) {
             set_fruit_number_text(get_fruit_num());
             set_time_text(curr_time-begin_time);
             show_status(bar_color,0x02);
+
+            display_time_on_tux(curr_time-begin_time);
 
             while (ticks--) {
 
@@ -636,11 +717,13 @@ static void *rtc_thread(void *arg) {
  */
 int main() {
     int ret;
+    int ldisc_num;
     struct termios tio_new;
     unsigned long update_rate = 32; /* in Hz */
 
     pthread_t tid1;
     pthread_t tid2;
+    pthread_t tid3;
 
     // Initialize RTC
     fd = open("/dev/rtc", O_RDONLY, 0);
@@ -649,6 +732,13 @@ int main() {
     // Default max is 64...must change in /proc/sys/dev/rtc/max-user-freq
     ret = ioctl(fd, RTC_IRQP_SET, update_rate);    
     ret = ioctl(fd, RTC_PIE_ON, 0);
+
+    // Initialize Tux Controller
+    fd_tux = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
+    ldisc_num = N_MOUSE;
+    ioctl(fd_tux, TIOCSETD, &ldisc_num);
+    /* initialize the controller */
+    ioctl(fd_tux, TUX_INIT);
 
     // Initialize Keyboard
     // Turn on non-blocking mode
@@ -682,10 +772,12 @@ int main() {
     // Create the threads
     pthread_create(&tid1, NULL, rtc_thread, NULL);
     pthread_create(&tid2, NULL, keyboard_thread, NULL);
+    pthread_create(&tid3, NULL, tux_thread, NULL);
     
     // Wait for all the threads to end
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
+    pthread_join(tid3, NULL);
 
     // Shutdown Display
     clear_mode_X();
@@ -693,6 +785,8 @@ int main() {
     // Close Keyboard
     (void)tcsetattr(fileno(stdin), TCSANOW, &tio_orig);
         
+    close(fd_tux);
+
     // Close RTC
     close(fd);
 
