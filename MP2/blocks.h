@@ -64,6 +64,7 @@ typedef enum {
 #define PLAYER_CENTER_COLOR 0x20
 #define WALL_OUTLINE_COLOR  0x21
 #define WALL_FILL_COLOR     0x22
+#define STATUS_BAR_COLOR    0x80
 
 /* 
  * CAUTION!  The order of blocks in this enumeration must match the

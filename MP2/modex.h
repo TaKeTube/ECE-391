@@ -167,6 +167,9 @@ extern void player_color_update();
 /* update the wall color according to the level */
 extern void wall_color_update(int level);
 
+/* update the status bar color according to the level */
+extern void bar_color_update(int level);
+
 /*
  * draw a 12x12 block with upper left corner at logical position
  * (pos_x,pos_y); any part of the block outside of the logical view window

@@ -39,3 +39,15 @@ NAME      : Zimu
 TIME      : 20-3-11
 BUG       : player is above the transparent text
 SOLUTION  : change the order of draw player and draw text 
+
+8.
+NAME      : Zimu
+TIME      : 20-3-13
+BUG       : After reset, led does not display
+SOLUTION  : It is because when the put function received a invalid command, I just return -EINVAL but does not set ack back to 1. Therefore, all commands would be blocked after it. Modify the small bug (index error) and reset ack to 1 before every -EINVAL return
+
+9.
+NAME      : Zimu
+TIME      : 20-3-14
+BUG       : When quit with keyboard, the program crashed
+SOLUTION  :Do not use pthread_join() but pthread_cancel() for tux thread.

@@ -325,17 +325,34 @@ static struct termios tio_orig;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
+/*
+ * tux_thread
+ *   DESCRIPTION: Thread that handles tux inputs
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
 static void *tux_thread(void *arg) {
     while(winner == 0 && quit_flag == 0){
+        // critical section
         pthread_mutex_lock(&mtx);
         while(!button_pressed){
             pthread_cond_wait(&cv, &mtx);
         }
-        // TODO
+        // get button from tux
         ioctl(fd_tux, TUX_BUTTONS, &buttons);
 
         switch(buttons & 0xFF)
         {
+            //up
+            case 0x10:
+                next_dir = DIR_UP;
+                break;
+            //down
+            case 0x20:
+                next_dir = DIR_DOWN;
+                break;
             //right:
             case 0x80:
                 next_dir = DIR_RIGHT;
@@ -343,14 +360,6 @@ static void *tux_thread(void *arg) {
             //left:
             case 0x40:
                 next_dir = DIR_LEFT;
-                break;
-            //down
-            case 0x20:
-                next_dir = DIR_DOWN;
-                break;
-            //up
-            case 0x10:
-                next_dir = DIR_UP;
                 break;
             default:
                 break;
@@ -430,6 +439,7 @@ static void display_time_on_tux(int num_seconds) {
     int second;     /* second */
     unsigned long time = 0;
 
+    /* calculate second and minute */
     second = num_seconds%60;
     min = (num_seconds/60)%60;
     
@@ -468,7 +478,6 @@ static void *rtc_thread(void *arg) {
     int open[NUM_DIRS];
     int need_redraw = 0;
     int goto_next_level = 0;
-    unsigned char bar_color;
     unsigned char *player_with_bg = NULL;
     unsigned char *bg_for_player = NULL;
 
@@ -482,17 +491,16 @@ static void *rtc_thread(void *arg) {
         // record the begin time of the level
         begin_time = time(NULL);
 
-        // set status bar color for this level
-        bar_color = 0x0F;
-
         // update the wall color according to the level
         wall_color_update(level);
+        // update status bar color for this level
+        bar_color_update(level);
         // initialize status bar
-        init_bar(bar_color);
+        init_bar(STATUS_BAR_COLOR);
         set_level_text(level);
         set_fruit_number_text(get_fruit_num());
-        // show status bar (copy to video memory)
-        show_status(bar_color,0x02);
+        // show status bar (copy to video memory), text color is white
+        show_status(STATUS_BAR_COLOR,0x0F);
 
         // Start the player at (1,1)
         play_x = BLOCK_X_DIM;
@@ -558,10 +566,12 @@ static void *rtc_thread(void *arg) {
                 goodcount++;
             }
 
+            // get button from tux
             ioctl(fd_tux, TUX_BUTTONS, &buttons);
-            // TODO
+            // check is the button is pressed
             button_pressed = (buttons&0xFF)?1:0;
 
+            // check whether to wake up tux thread
             pthread_mutex_lock(&mtx);
             if (button_pressed){
                 pthread_cond_signal(&cv);
@@ -575,8 +585,9 @@ static void *rtc_thread(void *arg) {
             curr_time = time(NULL);
             set_fruit_number_text(get_fruit_num());
             set_time_text(curr_time-begin_time);
-            show_status(bar_color,0x02);
+            show_status(STATUS_BAR_COLOR,0x0F);
 
+            // update time on tux
             display_time_on_tux(curr_time-begin_time);
 
             while (ticks--) {
@@ -777,7 +788,7 @@ int main() {
     // Wait for all the threads to end
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
-    pthread_join(tid3, NULL);
+    pthread_cancel(tid3);
 
     // Shutdown Display
     clear_mode_X();
