@@ -32,6 +32,7 @@
 #define EXTRACT_4BIT(arg, n)    ((arg&(0xF<<(n*4)))>>(n*4))
 #define DECIMAL_POINT           0x10
 #define BIT_MASK(arg, n)        (arg&(0x1<<n))
+#define LED_CMD_NUM             6
 
 static spinlock_t tux_lock = SPIN_LOCK_UNLOCKED;
 static unsigned long button_data;
@@ -40,7 +41,7 @@ static unsigned long ack = 1;
 static const unsigned char segments_map[16] = {0xE7, 0x06, 0xCB, 0x8F, 0x2E, 0xAD, 0xED, 0x86, 0xEF, 0xAF, 0xEE, 0x6D, 0xE1, 0x4F, 0xE9, 0xE8};
 
 int tux_init(struct tty_struct* tty);
-int tux_buttions(struct tty_struct* tty, unsigned long arg);
+int tux_button(struct tty_struct* tty, unsigned long arg);
 int tux_set_led(struct tty_struct* tty, unsigned long arg);
 
 /************************ Protocol Implementation *************************/
@@ -98,6 +99,8 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
         cmds[0] = MTCP_BIOC_ON;
         cmds[1] = MTCP_LED_USR;
         tuxctl_ldisc_put(tty, cmds, 2);
+        /* set button */
+        button_data = 0;
         /* restore led value */
         tux_set_led(tty, led_data);
         break;
@@ -141,7 +144,7 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
     case TUX_INIT:
         return tux_init(tty);
     case TUX_BUTTONS:
-        return tux_buttions(tty, arg);
+        return tux_button(tty, arg);
     case TUX_SET_LED:
         return tux_set_led(tty, arg);
     case TUX_LED_ACK:
@@ -210,7 +213,7 @@ int tux_init(struct tty_struct* tty){
  *   RETURN VALUE: 0 if success, else -EINVAL
  *   SIDE EFFECTS: none
  */
-int tux_buttions(struct tty_struct* tty, unsigned long arg){
+int tux_button(struct tty_struct* tty, unsigned long arg){
     int failed_byte_num;    /* unsuccessful copied byte */
     unsigned long flags;    /* variable to store EFLAG */
 
@@ -249,8 +252,7 @@ int tux_set_led(struct tty_struct* tty, unsigned long arg){
     unsigned char led_segment;      /* segment value corresponding to the char */
     unsigned char led_mask;         /* Bitmask of which LED's to set */
     unsigned char led_dec_point;    /* specify whether the corresponding decimal points should be turned on */
-    unsigned char cmds[6];          /* temp variable to pass command */
-    int cmd_num = 0;                /* command index */
+    unsigned char cmds[LED_CMD_NUM];/* temp variable to pass command */
     int i;                          /* loop index for each char */
 
     /* get bit mask 4 bit from arg */
@@ -259,9 +261,9 @@ int tux_set_led(struct tty_struct* tty, unsigned long arg){
     led_dec_point = EXTRACT_4BIT(arg, 6);
 
     /* set led command */
-    cmds[cmd_num++] = MTCP_LED_SET;
-    /* set Bitmask of which LED's to set to tux */
-    cmds[cmd_num++] = led_mask;
+    cmds[0] = MTCP_LED_SET;
+    /* set all bit unmasked in order to clear led */
+    cmds[1] = 0x0F;
 
     /* send segment values to tux according to bitmask */
     for (i = 0; i < 4; i++){
@@ -276,8 +278,8 @@ int tux_set_led(struct tty_struct* tty, unsigned long arg){
         }
         /* add decimal point if needed */
         if(led_dec_point&(0x1<<i)) led_segment |= DECIMAL_POINT;
-        /* save segment values */
-        if(led_segment) cmds[cmd_num++] = led_segment;
+        /* save segment values after 2 commands */
+        cmds[2+i] = led_segment;
     }
 
     /* critical section */
@@ -290,7 +292,7 @@ int tux_set_led(struct tty_struct* tty, unsigned long arg){
     /* set ack to indicate new task has beginned */
     ack = 0;
     /* send all commands to the device. If failed, clear ack */
-    if(tuxctl_ldisc_put(tty, cmds, cmd_num)){
+    if(tuxctl_ldisc_put(tty, cmds, LED_CMD_NUM)){
         ack = 1;
         spin_unlock_irqrestore(&tux_lock, flags);
         return -EINVAL;
