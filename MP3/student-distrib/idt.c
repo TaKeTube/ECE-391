@@ -7,6 +7,18 @@
 // just for check point 3.1
 void system_call();
 
+/* 
+ * idt_init
+ *   DESCRIPTION: Initialize IDT (interrupt descriptor table)
+ *                0x00-0x13 are exceptions
+ *                0x21 keyboard interrupt
+ *                0x28 RTC interrupt
+ *                0x80 reserved for system call
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: changes IDT table
+ */
 void idt_init(){
     // Exception
     set_intr_gate(0x00, exc_divide_error);
@@ -50,15 +62,15 @@ void idt_init(){
  */
 void set_intr_gate(unsigned int vec, void *addr){
     SET_IDT_ENTRY(idt[vec], addr);
-    idt[vec].seg_selector = KERNEL_CS;
-    idt[vec].reserved4 = 0;
-    idt[vec].reserved3 = 1;
-    idt[vec].reserved2 = 1;
-    idt[vec].reserved1 = 1;
-    idt[vec].size = 1;
-    idt[vec].reserved0 = 0;
-    idt[vec].dpl = KERNEL_PRIORITY;
-    idt[vec].present = 1;
+    idt[vec].seg_selector = KERNEL_CS;      // kernel segment code
+    idt[vec].reserved4 = 0;                 // interrupt specified
+    idt[vec].reserved3 = 1;                 // interrupt specified
+    idt[vec].reserved2 = 1;                 // interrupt specified
+    idt[vec].reserved1 = 1;                 // interrupt specified
+    idt[vec].size = 1;                      // indicate 32 bit interrupt gate
+    idt[vec].reserved0 = 0;                 // interrupt specified
+    idt[vec].dpl = KERNEL_PRIORITY;         // kernel priority (0)
+    idt[vec].present = 1;                   // entry present
     return;
 }
 

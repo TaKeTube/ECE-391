@@ -43,3 +43,9 @@
                 "movl %eax, %cr0;"
         );
 + What remains to do: a better interface and wrapper of my test code.
+
+#### 2021/03/21 Li
++ Checkpoint 1 keyboard initialization done.
++ a bug in ./keyboard.h: #define KEYBOARD_PORT 0x21
+        should use 0x60 instead of 0x21, since it's keyboard's port index,
+        and 0x21 causes error because it's master PIC port.

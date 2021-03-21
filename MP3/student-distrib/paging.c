@@ -6,14 +6,18 @@
 #include "paging.h"
 #include "lib.h"
 
-/* 
- * init_paging
- */
-void init_paging()
+/*
+*	paging_init
+*	Description:    init paging when booting system
+*	inputs:         nothing
+*	outputs:	    nothing
+*	effects:	    the paging mechanism is enabled and initialized 
+*/
+void paging_init()
 {
     /* init empty page directory and a page table */
-    init_page_directory();
-    init_page_table();
+    page_directory_init();
+    page_table_init();
 
     /* activate 0-3mB memory with 4kB pages, connect to the page table */
     page_directory[0].p = 1;
@@ -22,7 +26,11 @@ void init_paging()
     /* activate 4-7mB memory with a 4mB page */
     page_directory[1].p = 1;
     page_directory[1].ps = 1;
-    page_directory[1].base_addr = 0x400; // a magic number
+    /* 
+        for 4mB page, set bit 13-21 to be 0, and the 10 bit msb should be 1
+        so 00000000 01 00 0000 0000 = 0x00400, we should set it to be 0x400
+    */
+    page_directory[1].base_addr = 0x400;
 
     /* manipulate hardware, enable paging */
     enable_paging();
@@ -30,12 +38,18 @@ void init_paging()
     activate_video();
 }
 
-/* 
- * init_pde
- */
-void init_page_directory()
+/*
+*	page_directory_init
+*	Description:    init a page directory with each entry's presence to be 0
+*	inputs:		    nothing
+*	outputs:	    nothing
+*	effects:	    a page directory is initialized for later usage, all its entries are r/w
+*/
+void page_directory_init()
 {
+    /* loop index */
     int i;
+    /* interate the directory to fill each entry */
     for (i = 0; i < NUM_PD_ENTRY; i++)
     {
         page_directory[i].p = 0;
@@ -52,12 +66,18 @@ void init_page_directory()
     }
 }
 
-/* 
- * init_pte
- */
-void init_page_table()
+/*
+*	page_table_init
+*	Description:    init a page table with each entry's presence to be 0
+*	inputs:		    nothing
+*	outputs:	    nothing
+*	effects:	    a page table is initialized for later usage, all its entries are r/w
+*/
+void page_table_init()
 {
+    /* loop index */
     int i;
+    /* interate the table to fill each entry */
     for (i = 0; i < NUM_PT_ENTRY; i++)
     {
         page_table[i].p = 0;
@@ -74,32 +94,45 @@ void init_page_table()
     }
 }
 
-
+/*
+*	enable_paging
+*	Description:    several hardware registers' values are set to enable paging 
+*	inputs:		    nothing
+*	outputs:	    nothing
+*	effects:	    mixed 4kB/4mB paging is enabled and cr3 base addr is set 
+*/
 void enable_paging()
 {   
     asm volatile(
-        // load cr3 base addr 
+        /* load cr3 base addr */
         "movl $page_directory, %eax;"
-        "andl $0xFFFFFC00, %eax;"
+        /* mask unnecessary bits, the last 10 bits would come from viurtual memory addr as index */
+        "andl $0xFFFFFC00, %eax;"   
         "movl %eax, %cr3;"
 
-        // Enable Mixture of 4kb and 4mb access
+        /* Enable Mixture of 4kb and 4mb access */
         "movl %cr4, %eax;"
+        /* set the bit 4 to be 1 */
         "orl $0x00000010, %eax;"
         "movl %eax, %cr4;"
 
-        // MSE: enable paging
+        /* MSE: enable paging */
         "movl %cr0, %eax;"
+        /* set the bit 31 to be 1 */
         "orl $0x80000000, %eax;"
         "movl %eax, %cr0;"
     );
 }
 
-
 /*
- * activate_video
- */
+*	activate_video
+*	Description:    activate a page for video memory usage
+*	inputs:		    nothing
+*	outputs:	    nothing
+*	effects:	    video memory is now valid to use 
+*/
 void activate_video()
 {
+    /* set the present field to be 1, the page is now valid */
     page_table[VIDEO >> MEM_OFFSET_BITS].p = 1;
 }

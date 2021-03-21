@@ -3,6 +3,7 @@
 
 void exc_handler(unsigned int vec);
 
+/* string array contains exception message */
 static char* exception_info[EXC_NUM] = {
     "Division by zero",
     "Single-step interrupt",
@@ -26,12 +27,22 @@ static char* exception_info[EXC_NUM] = {
     "SIMD Floating-Point Exception"
 };
 
+/* 
+ * exc_handler
+ *   DESCRIPTION: exception handler, print out the exception info
+ *   INPUTS: vec -- corresponding exception
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
 void exc_handler(unsigned int vec){
     printf("EXCEPTION %d:\n", vec);
     printf("%s\n", exception_info[vec]);
+    /* end with infinite loop according to the document */
     while(1);
 }
 
+/* handler for exceptions in Linux */
 void exc_divide_error()              {exc_handler(0x00);}
 void exc_single_step()               {exc_handler(0x01);}
 void exc_nmi()                       {exc_handler(0x02);}

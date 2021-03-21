@@ -1,8 +1,10 @@
 #ifndef _EXCEPTION_H
 #define _EXCEPTION_H
 
+/* exception number */
 #define EXC_NUM     20
 
+/* handler for exceptions in Linux */
 extern void exc_divide_error();
 extern void exc_single_step();
 extern void exc_nmi();

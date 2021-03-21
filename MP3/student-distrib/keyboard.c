@@ -2,8 +2,7 @@
 #include "lib.h"
 #include "i8259.h"
 
-volatile int key_buffer_lastidx;
-
+// array for basic key inputs
 unsigned char key_table[KEY_NUM] = {
     '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\0', '\0',
     'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\0', '\0', 'a', 's',
@@ -18,7 +17,7 @@ unsigned char key_table[KEY_NUM] = {
 *	outputs:	nothing
 *	effects:	enables line for keyboard on the master PIC
 */
-void init_keyboard(){
+void keyboard_init(){
     enable_irq(KEYBOARD_IRQ);
 }
 
@@ -33,8 +32,10 @@ void keyboard_handler(){
     unsigned char keydata = 0;
     unsigned char key;
 
+    // mask interrupt
     cli();
     
+    // wait for interrupt
     while(1){
         if (inb(KEYBOARD_PORT)){
             keydata = inb(KEYBOARD_PORT);
@@ -42,12 +43,15 @@ void keyboard_handler(){
         }
     }
     
+    // check if key is valid
     if (keydata < KEY_NUM){
         key = key_table[keydata];
         putc(key);
     }
 
+    // end interrupt
     send_eoi(KEYBOARD_IRQ);
+    // enable interrupt
     sti();
 }
 

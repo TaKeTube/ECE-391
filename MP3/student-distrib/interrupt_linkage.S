@@ -1,6 +1,7 @@
 #define ASM     1
 #include "interrupt_linkage.h"
 
+/* macro for push all genral registers and struct pt regs */
 #define pushall     \
     pushl   %fs;    \
     pushl   %es;    \
@@ -13,6 +14,7 @@
     pushl   %ecx;   \
     pushl   %ebx;
 
+/* macro for restore all genral registers and struct pt regs */
 #define popall      \
     popl    %ebx;   \
     popl    %ecx;   \
@@ -25,6 +27,7 @@
     popl    %es;    \
     popl    %fs;
 
+/* RTC interrupt linkage code */
 .global int_rtc
 int_rtc:
     pushall
@@ -32,6 +35,7 @@ int_rtc:
     popall
     iret
 
+/* keyboard interrupt linkage code */
 .global int_keyboard
 int_keyboard:
     pushall

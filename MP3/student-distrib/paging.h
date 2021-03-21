@@ -8,12 +8,17 @@
 
 #include "types.h"
 
+/* the number of paging directory entries */
 #define NUM_PD_ENTRY        1024
+/* the number of paging table entries */
 #define NUM_PT_ENTRY        1024
+/* the size of a 4kB page (number of bytes) */
 #define PAGE_SIZE           4096
+/* 12bits offset in virtual memory as index in a 4kB-page */
 #define MEM_OFFSET_BITS     12
 
 
+/* struct for page directory entry */
 typedef struct page_dir_entry
 {
     uint32_t p              : 1;
@@ -29,6 +34,7 @@ typedef struct page_dir_entry
     uint32_t base_addr      : 20;
 } page_dir_entry_t;
 
+/* struct for page table entry */
 typedef struct page_table_entry
 {
     uint32_t p              : 1;
@@ -44,15 +50,20 @@ typedef struct page_table_entry
     uint32_t base_addr      : 20;
 } page_table_entry_t;
 
+/* page directory, 4096 aligned */
 page_dir_entry_t page_directory[NUM_PD_ENTRY] __attribute__((aligned(PAGE_SIZE)));
+/* page table, 4096 aligned */
 page_table_entry_t page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_SIZE)));
 
-
-void init_paging();
-void init_page_directory();
-void init_page_table(); 
+/* init paging */
+void paging_init();
+/* init page directory */
+void page_directory_init();
+/* init page table */
+void page_table_init(); 
+/* set hardware registers to enable mixed paging */
 void enable_paging();
+/* activate video memory page to be valid */
 void activate_video();
-
 
 #endif

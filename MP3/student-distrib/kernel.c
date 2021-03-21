@@ -140,22 +140,20 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
+    /* init IDT */
     idt_init();
-
-    init_paging();
-
+    /* init paging */
+    paging_init();
     /* Init the PIC */
     i8259_init();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
-    rtc_init();
 
-    init_keyboard();
-    // int i;
-    // for(i = 0; i < MAX_IRQ_NUM; i++){
-    //     enable_irq(i);
-    // }
+    /* init RTC */
+    rtc_init();
+    /* init keyboard */
+    keyboard_init();
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your

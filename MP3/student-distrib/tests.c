@@ -47,6 +47,42 @@ int idt_test(){
 
 // add more tests here
 
+/* Exception Test
+ * 
+ * test exception
+ * Inputs: None
+ * Outputs: throw corresponding exception on the screen
+ * Side Effects: None
+ * Coverage: Exceptions
+ * Files: exception.h/c, idt.h/c
+ */
+void exception_test(int vec){
+    TEST_HEADER;
+
+    int a;
+    int* pointer;
+
+    switch (vec)
+    {
+    case 0x00:
+    /* divide_error */
+        a = 2/0;
+        a = a;
+        break;
+    case 0x0B:
+        pointer = NULL;
+        a = *pointer;
+        a = a;
+    case 0x0E:
+    /* page_fault */
+        a = *((int *) (VIDEO + 0x1000));
+        a = a;
+    default:
+        break;
+    }
+}
+
+
 /* test init paging */
 
 /* should report error */
@@ -117,5 +153,6 @@ int deref_test_kernel() {
 /* Test suite entry point */
 void launch_tests(){
 	TEST_OUTPUT("deref_test_kernel", deref_test_kernel());
+	// exception_test(0x00);
 	// launch your tests here
 }
