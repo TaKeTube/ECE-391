@@ -2,6 +2,6 @@
 #define _INTERRUPT_H
 
 // extern void keyboard_handler();
-extern void rtc_handler();
+// extern void rtc_handler();
 
 #endif

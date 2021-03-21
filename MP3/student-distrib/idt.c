@@ -37,6 +37,17 @@ void idt_init(){
     return;
 }
 
+/* 
+ * set_intr_gate
+ *   DESCRIPTION: Set interrupt gate in IDT (interrupt descripter table) of one interrupt
+ *                using the address of the interrupt handler
+ *                see x86_desc.h for formats
+ *   INPUTS: vec -- corresponding interrupt vector
+ *           addr -- address of interrupt handler
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: changes IDT table
+ */
 void set_intr_gate(unsigned int vec, void *addr){
     SET_IDT_ENTRY(idt[vec], addr);
     idt[vec].seg_selector = KERNEL_CS;
@@ -51,7 +62,14 @@ void set_intr_gate(unsigned int vec, void *addr){
     return;
 }
 
+/* 
+ * system call
+ *   DESCRIPTION: temp handler for system call
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
 void system_call(){
     printf("a system call was called.");
-    while(1);
 }

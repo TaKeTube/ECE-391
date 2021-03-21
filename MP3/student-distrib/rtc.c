@@ -93,3 +93,14 @@ int32_t rtc_write_fre(const void* data, int32_t num) {
 	}
 	return rtc_set_fre(fre);
 }
+
+void rtc_handler(){
+    cli();
+
+    test_interrupts();
+    outb(RTC_REGC, RTC_PORT);
+    inb(RTC_DATA);
+    send_eoi(RTC_IRQ);
+    
+	sti();
+}
