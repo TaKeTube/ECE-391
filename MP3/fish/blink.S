@@ -131,7 +131,7 @@ mp1_ioctl_add:
         # Check that the location is valid
         cmpw    $80*25,LOCATION(%ebx)
         jae     add_fail_return
-       
+
         # Mark this structure as valid
         movw    $0x1,STATUS(%ebx)  # Mark it as on
         movw    ON_LENGTH(%ebx),%dx

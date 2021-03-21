@@ -11,6 +11,17 @@
 /* Ports that each PIC sits on */
 #define MASTER_8259_PORT    0x20
 #define SLAVE_8259_PORT     0xA0
+#define MASTER_8259_DATA (MASTER_8259_PORT+1)
+#define SLAVE_8259_DATA  (SLAVE_8259_PORT+1)
+#define INIT_MASK           0xFF
+#define SLAVE_PORT          2
+/* value for enable and disable process*/
+#define MAX_IRQ_NUM         15
+#define MAX_MASTER_IRQ_NUM  8
+
+/* IR for devices*/
+#define SLAVE_IRQ 2
+#define RTC_IRQ  8
 
 /* Initialization control words to init each PIC.
  * See the Intel manuals for details on the meaning

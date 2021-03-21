@@ -8,7 +8,6 @@
 #define _TYPES_H
 
 #define NULL 0
-
 #ifndef ASM
 
 /* Types defined here just like in <stdint.h> */

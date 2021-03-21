@@ -8,6 +8,10 @@
 #include "i8259.h"
 #include "debug.h"
 #include "tests.h"
+#include "idt.h"
+#include "rtc.h"
+#include "keyboard.h"
+#include "paging.h"
 
 #define RUN_TESTS
 
@@ -136,11 +140,22 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
+    idt_init();
+
+    init_paging();
+
     /* Init the PIC */
     i8259_init();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
+    rtc_init();
+
+    init_keyboard();
+    // int i;
+    // for(i = 0; i < MAX_IRQ_NUM; i++){
+    //     enable_irq(i);
+    // }
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your

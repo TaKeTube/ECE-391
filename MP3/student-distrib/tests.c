@@ -47,6 +47,67 @@ int idt_test(){
 
 // add more tests here
 
+/* test init paging */
+
+/* should report error */
+int deref_NULL_test() {
+	TEST_HEADER;
+	char a = *((int*) NULL);
+	/* fix compilation warning: unused variable */
+	a = a;
+	return FAIL;
+}
+
+/* should report error */
+int deref_test_large_location() {
+	TEST_HEADER;
+	char a = *((int *) 0xFF000000);
+	/* fix compilation warning: unused variable */
+	a = a;
+	return FAIL;
+}
+
+int deref_test_video_mem() {
+	TEST_HEADER;
+	char a = *((int *) VIDEO);
+	/* fix compilation warning: unused variable */
+	a = a;
+	return PASS;
+}
+
+int deref_test_video_mem_plus_2kb() {
+	TEST_HEADER;
+	char a = *((int *) (VIDEO + 0x0800));		/* 0x0800 => 2048B = 2kB */
+	/* fix compilation warning: unused variable */
+	a = a;
+	return PASS;
+}
+
+int deref_test_video_mem_end() {
+	TEST_HEADER;
+	char a = *((char *) (VIDEO + 0x1000 - 1));		/* 0x1000 => 4096B = 4kB */
+	/* fix compilation warning: unused variable */
+	a = a;
+	return PASS;
+}
+
+/* should report error */
+int deref_test_video_mem_plus_4kb() {
+	TEST_HEADER;
+	char a = *((int *) (VIDEO + 0x1000));		/* 0x1000 => 4096B = 4kB */
+	/* fix compilation warning: unused variable */
+	a = a;
+	return FAIL;
+}
+
+int deref_test_kernel() {
+	TEST_HEADER;
+	char a = *((int *) (0x00400000 + 0x400));
+	/* fix compilation warning: unused variable */
+	a = a;
+	return PASS;
+}
+
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
@@ -55,6 +116,6 @@ int idt_test(){
 
 /* Test suite entry point */
 void launch_tests(){
-	TEST_OUTPUT("idt_test", idt_test());
+	TEST_OUTPUT("deref_test_kernel", deref_test_kernel());
 	// launch your tests here
 }
