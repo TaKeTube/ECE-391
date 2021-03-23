@@ -16,8 +16,11 @@
 #define RTC_MIN_FRE 2
 #define RTC_MAX_FRE 1024
 
+/* initialize the rtc */
 extern int32_t rtc_init();
+/* set the frequency in RTC */
 extern int32_t rtc_set_fre(int32_t fre);
+/* the interrupt handler for rtc */
 extern void rtc_handler();
 
 #endif // !_RTC_H

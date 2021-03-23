@@ -52,17 +52,17 @@ void page_directory_init()
     /* interate the directory to fill each entry */
     for (i = 0; i < NUM_PD_ENTRY; i++)
     {
-        page_directory[i].p = 0;
-        page_directory[i].r_w = 1;      // always 1
-        page_directory[i].u_s = 0;      // ?
-        page_directory[i].pwt = 0;      // always 0
-        page_directory[i].pcd = 0;      // ?
-        page_directory[i].a = 0;        // won't use, does not matter
-        page_directory[i].reserved = 0; // set to 0
-        page_directory[i].ps = 0;       // 0 for 4kB; 1 for 4mB
-        page_directory[i].g = 0;        // ?
-        page_directory[i].avail = 0;    // won't use, does not matter
-        page_directory[i].base_addr = 0;
+        page_directory[i].p = 0;        // Present
+        page_directory[i].r_w = 1;      // Read/write permission always 1
+        page_directory[i].u_s = 0;      // User/supervisor
+        page_directory[i].pwt = 0;      // Page write-through always 0
+        page_directory[i].pcd = 0;      // Page cache disabled
+        page_directory[i].a = 0;        // Accessed, won't use, does not matter
+        page_directory[i].reserved = 0; // Reserved, set to 0
+        page_directory[i].ps = 0;       // Page size, 0 for 4kB; 1 for 4mB
+        page_directory[i].g = 0;        // Global bit
+        page_directory[i].avail = 0;    // Available for our use, won't use, does not matter
+        page_directory[i].base_addr = 0;// Page-Table Base Address
     }
 }
 
@@ -80,17 +80,17 @@ void page_table_init()
     /* interate the table to fill each entry */
     for (i = 0; i < NUM_PT_ENTRY; i++)
     {
-        page_table[i].p = 0;
-        page_table[i].r_w = 1;   // always 1
-        page_table[i].u_s = 0;   // ?
-        page_table[i].pwt = 0;   // always 0
-        page_table[i].pcd = 0;   // ?
-        page_table[i].a = 0;     // won't use, does not matter
-        page_table[i].d = 0;     // set to 0
-        page_table[i].pat = 0;   // set to 0
-        page_table[i].g = 0;     // ?
-        page_table[i].avail = 0; // won't use, does not matter
-        page_table[i].base_addr = i;
+        page_table[i].p = 0;        // Present
+        page_table[i].r_w = 1;      // Read/write permission, always 1
+        page_table[i].u_s = 0;      // User/supervisor
+        page_table[i].pwt = 0;      // Page write-through, always 0
+        page_table[i].pcd = 0;      // Page cache disabled
+        page_table[i].a = 0;        // Accessed, won't use, does not matter
+        page_table[i].d = 0;        // Dirty, set to 0
+        page_table[i].pat = 0;      // Page Attribute Table index, set to 0
+        page_table[i].g = 0;        // Global bit
+        page_table[i].avail = 0;    // Available for our use, won't use, does not matter
+        page_table[i].base_addr = i;// Page-Table Base Address
     }
 }
 

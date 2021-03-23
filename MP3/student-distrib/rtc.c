@@ -18,7 +18,7 @@ int32_t rtc_init()
     /* disable all interrupts, including the NMI */
     cli();
     /* disable NMI*/
-    prev = inb(RTC_PORT) | 0x80;
+    prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
 
     /* set default frequency. if fails, return -1*/
@@ -36,7 +36,7 @@ int32_t rtc_init()
     enable_irq(SLAVE_IRQ);
 
     /* enable NMI*/
-    prev = inb(RTC_PORT) & 0X7F;
+    prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
     outb(prev, RTC_PORT);
     /* enable all interrupt */
     sti();
@@ -57,7 +57,7 @@ int32_t rtc_set_fre(int32_t fre)
     uint8_t rate;
     uint8_t prev;
     /* check whether the frequency is in vaild range*/
-    if (fre < RTC_MIN_FRE && fre > RTC_MAX_FRE)
+    if (fre < RTC_MIN_FRE || fre > RTC_MAX_FRE)
         return -1;
     /* check whether the frequency is in power of 2*/
     if (((fre - 1) & fre))
@@ -66,11 +66,11 @@ int32_t rtc_set_fre(int32_t fre)
     while (fre >>= 1)
         log += 1;
     /* get the corresponding rate due to the table 3*/
-    rate = 16 - log;
+    rate = 16 - log; //16 is the number of bit patterns in Register A0,A1,A2,A3 due to table 3
     /* disable all interrupts, including the NMI */
     cli();
     /* disable NMI*/
-    prev = inb(RTC_PORT) | 0x80;
+    prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
 
     /* set the frequency bits in register A to the rate value*/
@@ -80,7 +80,7 @@ int32_t rtc_set_fre(int32_t fre)
     outb((prev & 0xF0) | rate, RTC_PORT); // set the corresponding bits (0-3) 
 
     /* enable the NMI*/
-    prev = inb(RTC_PORT) & 0X7F;
+    prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
     outb(prev, RTC_PORT);
     /* enable all interrupts*/
     sti();

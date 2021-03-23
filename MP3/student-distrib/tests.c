@@ -1,6 +1,9 @@
 #include "tests.h"
 #include "x86_desc.h"
 #include "lib.h"
+#include "i8259.h"
+#include "idt.h"
+#include "rtc.h"
 
 #define PASS 1
 #define FAIL 0
@@ -60,89 +63,175 @@ void exception_test(int vec){
     TEST_HEADER;
 
     int a;
+	int val;
     int* pointer;
 
     switch (vec)
     {
-    case 0x00:
-    /* divide_error */
-        a = 2/0;
-        a = a;
-        break;
-    case 0x0B:
-        pointer = NULL;
-        a = *pointer;
-        a = a;
-    case 0x0E:
-    /* page_fault */
-        a = *((int *) (VIDEO + 0x1000));
-        a = a;
-    default:
-        break;
+		case 0x00:
+		/* divide_error */
+			val = 0; // avoid divide by 0 warning
+			a = 2/val;
+			break;
+		/* test exception by calling interrupt directly */
+		case 0x01: asm volatile ("int $0x01"); break;
+		case 0x02: asm volatile ("int $0x02"); break;
+		case 0x03: asm volatile ("int $0x03"); break;
+		case 0x04: asm volatile ("int $0x04"); break;
+		case 0x05: asm volatile ("int $0x05"); break;
+		case 0x06: asm volatile ("int $0x06"); break;
+		case 0x07: asm volatile ("int $0x07"); break;
+		case 0x08: asm volatile ("int $0x08"); break;
+		case 0x09: asm volatile ("int $0x09"); break;
+		case 0x0A: asm volatile ("int $0x0A"); break;
+		case 0x0B:
+		/* page fault */
+			pointer = NULL;
+			a = *pointer;
+			break;
+		case 0x0C: asm volatile ("int $0x0C"); break;
+		case 0x0D: asm volatile ("int $0x0D"); break;
+		case 0x0E: asm volatile ("int $0x0E"); break;
+		case 0x0F: asm volatile ("int $0x0F"); break;
+		case 0x10: asm volatile ("int $0x10"); break;
+		case 0x11: asm volatile ("int $0x11"); break;
+		case 0x12: asm volatile ("int $0x12"); break;
+		case 0x13: asm volatile ("int $0x13"); break;
+		default: break;
     }
 }
 
 
-/* test init paging */
+/* test paging_init */
 
-/* should report error */
-int deref_NULL_test() {
-	TEST_HEADER;
-	char a = *((int*) NULL);
-	/* fix compilation warning: unused variable */
-	a = a;
+/* cases involved in testing*/
+enum TESTCASES_PAGING
+{
+	T_VALID, T_NULL_PTR, T_UNPRESENT_PAGE_1, T_UNPRESENT_PAGE_2, T_VIDEO_OVERFLOW, T_VIDEO_UNDERFLOW
+};
+
+/* paging_init() Test
+ * 
+ * Asserts that paging is initialized
+ * Inputs: testcase -- which case is to be tested
+ * Outputs: PASS/FAIL
+ * Side Effects: None
+ * Coverage: enable paging and init paging
+ * Files: paging.h/c
+ */
+int test_paging_init(int testcase)
+{
+	/* local variable that attempts to access certain memory location */
+	char test;
+	switch (testcase)
+	{
+		/* testcase1, all these operatons should be valid */
+		case T_VALID:
+			TEST_HEADER;
+			/* access the start of video memory */
+			test = *((char *) VIDEO);
+			/* access an addr inside video memory, 0x0111 are randomly chosen inside video memory */
+			test = *((char *) (VIDEO + 0x0111));	
+			/* access the last byte in video memory, (VIDEO, VIDEO+0x0FFF) are valid video memory */
+			test = *((char *) (VIDEO + 0x1000 - 1));
+			/* access the start of kernel 4mB page, 0x00400000 is the start of kernel page */
+			test = *((char *) (0x00400000));
+			/* 
+				access an addr inside kernel page,
+				0x00400000 is the start of kernel page,
+				0x0111 are randomly chosen inside video memory 
+			*/
+			test = *((char *) (0x00400000 + 0x0111));
+			/* 
+				access the last byte in kernel page
+				00000000 01 00 0000 0000 = 0x00400 the start of kernel page,
+				00000000 01 11 1111 1111 = 0x007FF the end of the kernel page
+			*/
+			test = *((char *) (0x007FFFFF));
+			return PASS;
+
+		/* 
+			testcase2, try to deref a NULL pointer 
+			should raise a exception, if not the test fails
+		*/
+		case T_NULL_PTR:
+			TEST_HEADER;
+			test = *((char*) NULL);
+			return FAIL;
+
+		/*
+			testcase3, try to access a page that is not present > 8mB
+			should raise a exception, if not the test fails
+		*/
+		case T_UNPRESENT_PAGE_1:
+			TEST_HEADER;
+			/* 0xFFFF0000 are randomly chosen, just a large memory addr */
+			test = *((char *) 0xFFFF0000);
+			return FAIL;
+		
+		/*
+			testcase4, try to access a page that is not present in the first page table
+			should raise a exception, if not the test fails
+		*/
+		case T_UNPRESENT_PAGE_2:
+			TEST_HEADER;
+			/* 0xB5000 are randomly chosen, just another page in the first page table that is not present */
+			/* VIDEO = 0xB8000 */
+			test = *((char *) (0xB5000));
+			return FAIL;
+
+		/*
+			testcase5, try to access video memory larger than 4kB
+			should raise a exception, if not the test fails
+		*/
+		case T_VIDEO_OVERFLOW:
+			TEST_HEADER;
+			/* (VIDEO, VIDEO+0x0FFF) are valid video memory, here we try to access 1 byte further */
+			test = *((char *) (VIDEO + 0x1000));
+			return FAIL;
+
+		/*
+			testcase6, try to access out of video memory 
+			should raise a exception, if not the test fails
+		*/
+		case T_VIDEO_UNDERFLOW:
+			TEST_HEADER;
+			/* the memory addr exactly 1 byte before video memory begins */
+			test = *((char *) (VIDEO - 0x0001));
+			return FAIL;
+		default:
+			break;
+	}
 	return FAIL;
 }
 
-/* should report error */
-int deref_test_large_location() {
+/* test_bad_input Test
+ * 
+ * test garbage input
+ * Inputs: none
+ * Outputs: PASS/FAIL
+ * Side Effects: None
+ * Coverage: garbage input
+ * Files: i8259.h/c, idt.h/c, rtc.h/c
+ */
+int test_bad_input(){
 	TEST_HEADER;
-	char a = *((int *) 0xFF000000);
-	/* fix compilation warning: unused variable */
-	a = a;
-	return FAIL;
+	
+	int result = PASS;
+	/* test PIC functions */
+	enable_irq(16);
+	disable_irq(16);
+	send_eoi(16);
+	/* test idt functions */
+	set_intr_gate(0,NULL);
+	set_intr_gate(NUM_VEC,test_interrupts);
+	/* test rtc functions */
+	if(!rtc_set_fre(2048)){result = FAIL;}
+	if(!rtc_set_fre(3)){result = FAIL;}
+	if(!rtc_set_fre(1)){result = FAIL;}
+	return result;
 }
 
-int deref_test_video_mem() {
-	TEST_HEADER;
-	char a = *((int *) VIDEO);
-	/* fix compilation warning: unused variable */
-	a = a;
-	return PASS;
-}
-
-int deref_test_video_mem_plus_2kb() {
-	TEST_HEADER;
-	char a = *((int *) (VIDEO + 0x0800));		/* 0x0800 => 2048B = 2kB */
-	/* fix compilation warning: unused variable */
-	a = a;
-	return PASS;
-}
-
-int deref_test_video_mem_end() {
-	TEST_HEADER;
-	char a = *((char *) (VIDEO + 0x1000 - 1));		/* 0x1000 => 4096B = 4kB */
-	/* fix compilation warning: unused variable */
-	a = a;
-	return PASS;
-}
-
-/* should report error */
-int deref_test_video_mem_plus_4kb() {
-	TEST_HEADER;
-	char a = *((int *) (VIDEO + 0x1000));		/* 0x1000 => 4096B = 4kB */
-	/* fix compilation warning: unused variable */
-	a = a;
-	return FAIL;
-}
-
-int deref_test_kernel() {
-	TEST_HEADER;
-	char a = *((int *) (0x00400000 + 0x400));
-	/* fix compilation warning: unused variable */
-	a = a;
-	return PASS;
-}
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
@@ -152,7 +241,7 @@ int deref_test_kernel() {
 
 /* Test suite entry point */
 void launch_tests(){
-	TEST_OUTPUT("deref_test_kernel", deref_test_kernel());
+	TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));
 	// exception_test(0x00);
 	// launch your tests here
 }

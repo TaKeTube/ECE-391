@@ -36,6 +36,9 @@ static char* exception_info[EXC_NUM] = {
  *   SIDE EFFECTS: none
  */
 void exc_handler(unsigned int vec){
+    if(vec >= EXC_NUM)
+        return;
+    cli();
     printf("EXCEPTION %d:\n", vec);
     printf("%s\n", exception_info[vec]);
     /* end with infinite loop according to the document */
@@ -43,6 +46,7 @@ void exc_handler(unsigned int vec){
 }
 
 /* handler for exceptions in Linux */
+/* just print out the exception corresponding to the interrupt vector */
 void exc_divide_error()              {exc_handler(0x00);}
 void exc_single_step()               {exc_handler(0x01);}
 void exc_nmi()                       {exc_handler(0x02);}

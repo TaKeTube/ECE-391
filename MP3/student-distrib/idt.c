@@ -61,6 +61,8 @@ void idt_init(){
  *   SIDE EFFECTS: changes IDT table
  */
 void set_intr_gate(unsigned int vec, void *addr){
+    if(addr == NULL || vec >= NUM_VEC)
+        return;
     SET_IDT_ENTRY(idt[vec], addr);
     idt[vec].seg_selector = KERNEL_CS;      // kernel segment code
     idt[vec].reserved4 = 0;                 // interrupt specified
