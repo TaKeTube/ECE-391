@@ -4,6 +4,8 @@
 #include "i8259.h"
 #include "tests.h"
 
+static int32_t virt_counter; // used to serve as counter in rtc_virtread
+static int32_t rtc_inter_status; // used to record whether new interrupt happens
 /*
  * rtc_init
  * DESCRIPTION: initialize the rtc.
@@ -34,6 +36,10 @@ int32_t rtc_init()
     /* enable corresponding IRQ for PICs*/
     enable_irq(RTC_IRQ);
     enable_irq(SLAVE_IRQ);
+
+    /* initialize the global variable */
+    virt_counter = 0;
+    rtc_inter_status = 0;
 
     /* enable NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
@@ -106,9 +112,123 @@ void rtc_handler() {
     outb(RTC_REGC, RTC_PORT); // select register C
     inb(RTC_DATA); // throw the contents in register C to reset status bits in register C
 
+    rtc_inter_status = rtc_inter_status++; // use this to indicate new interrupt happens
+
     /* send EOI to indicate the handler finishes the work*/
     send_eoi(RTC_IRQ);
 
     /* unmask the interrupts*/
     sti();
+}
+
+/*
+ * rtc_open
+ * DESCRIPTION: this function serves as the open call for RTC driver
+ * INPUT: filename: unused variable
+ * OUTPUT: none
+ * RETURN: return 0 for success
+ * SIDEAFFECTS: none 
+ */
+int32_t rtc_open(const uint8_t* filename)
+{
+    /* set default frequency*/
+    rtc_set_fre(2);
+    /* return 0 for success*/
+    return 0;
+}
+
+/*
+ * rtc_close
+ * DESCRIPTION: this function serves as the close call for RTC driver and reset some variable
+ * INPUT: fd: unused variable
+ * OUTPUT: none
+ * RETURN: return 0 for success
+ * SIDEAFFECTS: none
+ */
+int32_t rtc_close(int32_t fd)
+{
+    /* initialize the virtread counter to 0*/
+    virt_counter = 0;
+    /* set default frequency*/
+    rtc_set_fre(2);
+    /* return 0 for success*/
+    return 0;
+}
+
+/*
+ * rtc_read
+ * DESCRIPTION: this function serves as the read call for RTC driver. It serves as waiter until next new interrupt.
+ * INPUT: fd, buf, nbytes: unused variable
+ * OUTPUT: none
+ * RETURN: return 0 for success
+ * SIDEAFFECTS: none
+ */
+int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes)
+{
+    /* record the current rtc_interrupt_status */
+    int32_t current_status = rtc_inter_status;
+    /* if the status doesn't change, wait*/
+    while (current_status == rtc_inter_status);
+    /* return 0 for success*/
+    return 0;
+
+}
+
+/*
+ * rtc_write
+ * DESCRIPTION: this function serves as the write call for RTC driver. It reads the frequency in buf 
+ *              and set the corresponding RTC frequency. It only receive int32_t as valid input.
+ * INPUT: fd: unused variable
+ *        buf: array used to store the target frequency.
+ *        nbytes: the number of byte in buf
+ * OUTPUT: none
+ * RETURN: return 0 for success
+ * SIDEAFFECTS: none
+ */
+
+int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes)
+{
+    // check whether the byte numbers is 4. If not, immediately return
+    if (nbytes != 4)
+        return -1;
+    // check whether the buff is NULL
+    if ((int32_t*)buf == NULL)
+        return -1;
+    /* now the buff has int32_t number. set it as frequency. The return value depend on the function rtc_set_fre*/
+    return rtc_set_fre(*(int32_t*)buf);
+}
+
+/*
+ * rtc_virtread
+ * DESCRIPTION: this function implements the virtualization RTC. Notice this function receives proportion as input
+ *              and will change the RTC frequency to the max frequency. It only receive int32_t as valid input.
+ * INPUT: fd: unused variable
+ *        buf: array used to store the target proportion
+ *        nbytes: the number of byte in buf  
+ * OUTPUT: none
+ * RETURN: 0 for success
+ * SIDEAFFECTS: set RTC frequency to max frequency.
+ */
+int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes)
+{
+    // check whether the byte numbers is 4. If not, immediately return
+    if (nbytes != 4)
+        return -1;
+    // check whether the buff is NULL
+    if ((int32_t*)buf == NULL)
+        return -1;
+    /* change to max frequency */
+    rtc_set_fre(RTC_MAX_FRE);
+    /* get the target proportion */
+    int32_t threshold = *(int32_t*)buf;
+    /* wait until proportion number of rtc_read called*/
+    while (virt_counter < threshold)
+    {
+        rtc_read(fd, but, nbytes); // read once
+        virt_counter++; // increase the counter
+    }
+    /* reset the counter */
+    virt_counter = 0;
+    /* return 0 for success*/
+    return 0;
 }
