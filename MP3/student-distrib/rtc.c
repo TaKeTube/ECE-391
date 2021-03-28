@@ -112,7 +112,7 @@ void rtc_handler() {
     outb(RTC_REGC, RTC_PORT); // select register C
     inb(RTC_DATA); // throw the contents in register C to reset status bits in register C
 
-    rtc_inter_status = rtc_inter_status++; // use this to indicate new interrupt happens
+    rtc_inter_status++; // use this to indicate new interrupt happens
 
     /* send EOI to indicate the handler finishes the work*/
     send_eoi(RTC_IRQ);
@@ -224,7 +224,7 @@ int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes)
     /* wait until proportion number of rtc_read called*/
     while (virt_counter < threshold)
     {
-        rtc_read(fd, but, nbytes); // read once
+        rtc_read(fd, buf, nbytes); // read once
         virt_counter++; // increase the counter
     }
     /* reset the counter */
