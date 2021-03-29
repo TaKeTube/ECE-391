@@ -4,6 +4,7 @@
 #include "i8259.h"
 #include "idt.h"
 #include "rtc.h"
+#include "terminal.h"
 
 #define PASS 1
 #define FAIL 0
@@ -232,6 +233,25 @@ int test_bad_input(){
 	return result;
 }
 
+/* terminal driver test*/
+int test_terminal(){
+	char buffer[128];
+	int r = 0, w = 0;
+	printf("terminal driver test begins\n");
+	while (1)
+	{
+		r = terminal_read(0, buffer, 128);
+		printf("read buf: %d\n", r);
+		if(r > 0)
+			w = terminal_write(0, buffer, 128);
+		printf("read buf: %d, wrtie buf:%d\n", r, w);
+		// printf("%d\n", r);
+		// printf("%d\n", w);
+		if(r != w)
+			break;
+	}
+	return -1;
+}
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
@@ -241,7 +261,21 @@ int test_bad_input(){
 
 /* Test suite entry point */
 void launch_tests(){
-	TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));
-	// exception_test(0x00);
-	// launch your tests here
+	//TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));s
+	// test_terminal_read_write();
+	// test_terminal_read_write();
+	test_terminal();
+	// char a[5] = {'a', 's', 's', 's', 's'};
+	// char buf[5] = {'b', 'd', 'd', 's', 's'};
+	// int i;
+	// terminal_write(0, a, 5);
+	// // exception_test(0x00);
+	// // launch your tests here
+	// // terminal_read(0, buf, 5);
+	// for (i=0; i<5; i++)
+	// {
+	// 	printf("%c", buf[i]);
+	// }
+	// printf(buf);
+	// terminal_write(0, buf, 5);
 }

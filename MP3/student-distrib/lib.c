@@ -23,6 +23,16 @@ void clear(void) {
     }
 }
 
+/* void reset_screen_xy();
+ * Inputs: void
+ * Return Value: none
+ * Function: Reset input position on the screen */
+void reset_screen_xy(){
+    screen_x = 0;
+    screen_y = 0;
+    return;
+}
+
 /* Standard printf().
  * Only supports the following format strings:
  * %%  - print a literal '%' character
@@ -168,15 +178,66 @@ int32_t puts(int8_t* s) {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        screen_y++;
-        screen_x = 0;
-    } else {
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
-        screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+        newline();
+        return;
+    } 
+
+    if(screen_x == NUM_COLS-1)
+        newline();
+    
+    *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
+    *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+    screen_x++;
+    // screen_x %= NUM_COLS;
+    // screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+}
+
+/* void delc();
+ * Inputs: nothing
+ * Return Value: void
+ *  Function: Perform backspaces */
+void delc() {
+    if (screen_x == 0){
+        screen_y--;
+        screen_x = NUM_COLS-1;
     }
+	else
+		screen_x--;
+    
+    *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = ' ';
+    *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+}
+
+/* void newline();
+ * Inputs: nothing
+ * Return Value: void
+ *  Function: Perform newline */
+void newline() {
+    screen_y ++;
+    scroll_up();
+    screen_x = 0;
+}
+
+/* void scroll_up();
+ * Inputs: nothing
+ * Return Value: void
+ *  Function: shift up the content in screen */
+void scroll_up() {
+	int x;
+	int y;
+
+    // shift existing content up, and fill last row with spaces
+    if (screen_y>=NUM_ROWS){
+	    for (x = 0; x < NUM_COLS; x++) {
+	    	for (y = 0; y < NUM_ROWS-1; y++) {
+	    		*(uint8_t *)(video_mem + ((NUM_COLS*y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS*(y+1) + x) << 1));
+	    	}
+	    }
+        screen_y --;
+    }
+	for (x = 0; x < NUM_COLS; x++) {
+		*(uint8_t *)(video_mem + ((NUM_COLS*(NUM_ROWS-1) + x) << 1)) = ' ';
+	}
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
@@ -473,3 +534,4 @@ void test_interrupts(void) {
         video_mem[i << 1]++;
     }
 }
+
