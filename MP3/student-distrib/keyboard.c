@@ -56,8 +56,8 @@ void keyboard_init(){
 *	side effects: echo current pressed key to screen
 */
 void keyboard_handler(){
-    unsigned char scancode = 0;
-    int i;
+    unsigned char scancode = 0;     /* scanned code */
+    int i;                          /* loop index for tab */
     // mask interrupt
     cli();
 
@@ -100,13 +100,16 @@ void keyboard_handler(){
         case ENTER:
             read_buffer[read_buffer_ptr] = '\n';
             read_buffer_ptr += 1;
+            /* if enter is pressed, set flag is_ready to tell the terminal ready to read */
             is_ready = 1;
             newline();
             break;
         case BACKSPACE:
-            read_buffer_ptr -= 1;
-            read_buffer[read_buffer_ptr] = '\0';
-            delc();
+            if (read_buffer_ptr>0){
+                read_buffer_ptr -= 1;
+                read_buffer[read_buffer_ptr] = '\0';
+                delc();
+            }
             break;
         case TAB:
             for (i=0; i<4; i++){
@@ -133,7 +136,7 @@ void keyboard_handler(){
 *	side effects: echo character corresponds to scancode to screen.
 */
 void print_key(unsigned char scancode){
-    unsigned char key;
+    unsigned char key;  /* corresponding key value */
     
     // select different key modes based on shift and cpas state
     if (scancode >= KEY_NUM)
@@ -186,10 +189,11 @@ void print_key(unsigned char scancode){
 *	side effects: the read buffer is reseted.
 */
 void clr_read_buffer(){
-    int i;
+    int i;  /* loop index for clearing read buffer */
     for (i=0; i<READ_BUFFER_SIZE; i++)
         read_buffer[i] = 0;
     read_buffer_ptr = 0;
+    /* clear is_ready */
 	is_ready = 0;
     return;
 }

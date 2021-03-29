@@ -72,3 +72,32 @@
 
 - Garbage input test finished.
 
+#### 2021/03/27 Guan
+
+- file system finished, not tested. One thing needs to be noticed is that, index starts from 0, so when we compare index with some max_num, we need to use >= or <=.
+
+#### 2021/03/28 Li
+
++ Function keys added for keyboard.
++ Implemented read buffer.
+
+
+#### 2021/03/28 Xie
++ terminal_open, terminal_close, terminal_read and terminal_write finished and debugged but not tested.
++ Modify keyboard driver slightly
+
+
+#### 2021/03/29 Li
+
++ Implemented screen scrolling.
++ Fixed a bug that caused backspace to overwrite previous rows.
++ RTC test for rtc_read() and rtc_write finished.
+
+#### 2021/03/29 Xie
++ terminal driver test function done.
++ terminal driver test finished.
++ a worthnoting bug, at first there is not a way to sync between keyboard and the terminal. So when performing terminal_read, nothing can be read and the screen would flash with prompt information of test function. As a solution, I introduce a flag called is_ready to communicate between keyboard and terminal. Only when the enter is pressed would this flag be set, telling the terminal a new read is ready.
+
+#### 2021/03/29 Guan
+
+- file system tested over. Surprisingly, no significant bug. One of the insignificant bugs is, I write an always false sanity check in read data. Other bugs are just syntax error or warning.

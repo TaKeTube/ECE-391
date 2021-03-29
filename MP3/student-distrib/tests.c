@@ -237,39 +237,67 @@ int test_bad_input(){
 
 
 /* Checkpoint 2 tests */
-/* terminal driver test*/
+
+/*
+ *	test_terminal
+ *	Description:    test the functionality of terminal
+ *	inputs:         nothing
+ *	outputs:	    nothing
+ *	effects:	    echo what is typed to terminal in time, after hitting an enter, echo again the whole input
+*/
 int test_terminal(){
-	char buffer[128];
+	/* a buffer to holds the terminal input */
+	char buffer[MAX_TERMINAL_BUF_SIZE];
+	/* the number of bytes read/write */
 	int r = 0, w = 0;
+	/* open terminal, do nothing */
+	terminal_open(0);
+	/* interface, tell the user that test begins */
 	printf("terminal driver test begins\n");
+	/* an infinite loop */
 	while (1)
 	{
-		r = terminal_read(0, buffer, 128);
+		/* call terminal_read and print the number of bytes read */
+		r = terminal_read(0, buffer, MAX_TERMINAL_BUF_SIZE);
 		printf("read buf: %d\n", r);
+		/* do sanity check and call terminal_write to write the input back to terminal */
 		if(r >= 0)
-			w = terminal_write(0, buffer, 128);
+			w = terminal_write(0, buffer, MAX_TERMINAL_BUF_SIZE);
+		/* interface, print the conclusion of this pair of test */
 		printf("read buf: %d, write buf:%d\n", r, w);
 		// printf("%d\n", r);
 		// printf("%d\n", w);
+		/* r should always equal w, if not, something must be wrong and break */
 		if(r != w)
 			break;
 	}
+	/* close terminal, do nothing */
+	terminal_close(0);
+	/* if the loop breaks, errors must take place */
 	return -1;
 }
 
-/* RTC test */
+/*
+ *	test_rtc
+ *	Description:    test the functionality of RTC
+ *	inputs:         nothing
+ *	outputs:	    nothing
+ *	effects:	    echo interrupts in different frequencies to screen, testing rtc_read(), rtc_write(), rtc_virtread()
+*/
 int test_rtc(){
-	int rtc_counter = 0;
-	int i;
-	int portition;
+	int rtc_counter = 0;/* counter for rtc interrupt */
+	int i;				/* loop index for several tests */
+	int freq;			/* frequency for test */
+
 	printf("Starting RTC Test...\n");
-	rtc_init();
+	// rtc_init();
 	rtc_open(0);
 
-	portition = 2;
+	/* Start with 2Hz (Min), print 20 interrupts */
+	freq = 2;
 	rtc_counter = 0;
-	printf("Switch to %d Hz\n", portition);
-	rtc_write(0, (void*)&portition, 4);
+	printf("Switch to %d Hz\n", freq);
+	rtc_write(0, (void*)&freq, 4);
 	for (i=0; i<20; i++){
 		rtc_read(0, (int*)0, 0);
 		rtc_counter ++;
@@ -281,29 +309,31 @@ int test_rtc(){
 		rtc_read(0, (int*)0, 0);
 	}
 
-	portition = 1024;
+	/* set frequency to 1024Hz (Max), print 5000 interrupts */
+	freq = 1024;
 	rtc_counter = 0;
-	printf("Switch to %d Hz\n", portition);
+	printf("Switch to %d Hz\n", freq);
 
 	printf("Wait for 2 seconds....\n");
 	for (i=0; i<4; i++){
 		rtc_read(0, (int*)0, 0);
 	}
 
-	rtc_write(0, (void*)&portition, 4);
+	rtc_write(0, (void*)&freq, 4);
 	for (i=0; i<5000; i++){
 		rtc_read(0, (int*)0, 0);
 		rtc_counter ++;
 		printf("RTC counter:%d\n", rtc_counter);
 	}
 
-	portition = 2;
-	rtc_write(0, (void*)&portition, 4);
+	freq = 2;
+	rtc_write(0, (void*)&freq, 4);
 	printf("Wait for 2 seconds....\n");
 	for (i=0; i<4; i++){
 		rtc_read(0, (int*)0, 0);
 	}
 
+	/* Test virtualized RTC read */
 	printf("Now test virtual read...\n");
 	printf("Switch to 1024/10 = 102.4 Hz. The entire counter should last around 3 seconds\n");
 	printf("Wait for 2 seconds....\n");
@@ -312,32 +342,39 @@ int test_rtc(){
 	}
 
 	printf("virtual read start...\n");
-	portition = 10;
+	freq = 10;
 	for (i=0;i<300;i++)
 	{
-		rtc_virtread(0,(void*)&portition, 4);
+		rtc_virtread(0,(void*)&freq, 4);
 	}
 	
 	printf("Now Switch to 1024/100 = 10.24 Hz. The entire counter should last around 10 seconds\n");
-	portition = 2;
-	rtc_write(0, (void*)&portition, 4);
+	freq = 2;
+	rtc_write(0, (void*)&freq, 4);
 	printf("Wait for 2 seconds....\n");
 	for (i=0; i<4; i++){
 		rtc_read(0, (int*)0, 0);
 	}
 	
 	printf("virtual read start...\n");
-	portition = 100;
+	freq = 100;
 	for (i=0;i<100;i++)
 	{
-		rtc_virtread(0,(void*)&portition, 4);
+		rtc_virtread(0,(void*)&freq, 4);
 	}
 
+	/* end, close file */
 	rtc_close(0);
 	printf("Test over\n");
 	return PASS;
 }
 
+/* test for file system */
+
+/* size of one data read from a file */
+#define T_FILE_READ_SIZE		1024
+
+/* some useful test file name index */
 #define T_RTC_NAME				5
 #define T_DIR_NAME				0
 #define T_EXE_NAME				9
@@ -347,6 +384,7 @@ int test_rtc(){
 #define T_INCOMPLETE_NAME		17
 #define T_UNREAL_NAME			18
 
+/* list of all test filename */
 static char* test_fname_list[20] = {
 	/* valid file name */
 	".", "sigtest", "shell", "grep", "syserr", "rtc", "fish", "counter", "pingpong",
@@ -356,18 +394,28 @@ static char* test_fname_list[20] = {
 	"frame", "unreal"
 };
 
+/*
+ *	test_ls
+ *	Description:    simulative ls command
+ *	inputs:         nothing
+ *	outputs:	    nothing
+ *	effects:	    dir open, close, read, write
+ *					list all files in file system with their size and type
+*/
 int test_ls(){
 	TEST_HEADER;
 
-	int fd, cnt;
-	dentry_t dentry;
-	uint8_t fname[MAX_FILE_NAME_LEN + 1] = {0};		// last \0 for very large file name
+	int fd, cnt;		/* file descriptor and counter of read bytes */
+	dentry_t dentry;	/* temp dentry for file info */
+	uint8_t fname[MAX_FILE_NAME_LEN + 1] = {0};		/* last a \0 for a very large file name */
 
+	/* open dir */
 	if (-1 == (fd = dir_open((char*)"."))){
         printf("directory open failed\n");
         return FAIL;
     }
 
+	/* read file name along dentry array */
 	while (0 != (cnt = dir_read(fd, fname, MAX_FILE_NAME_LEN))) {
 		if (-1 == cnt) {
 			printf("directory read failed\n");
@@ -379,36 +427,49 @@ int test_ls(){
 			return FAIL;
 		}
 		/* print file information */
-		printf("File Name: %s\n", fname);
-		printf("    Type: %d    ", dentry.file_type);
+		printf("File Name: %s    ", fname);
+		printf("Type: %d    ", dentry.file_type);
 		/* if is usual file, print size of the file */
 		if (dentry.file_type == FILE_TYPE)
 			printf("Size: %d B   \n", get_file_size(&dentry));
 		else
 			printf("Size: N/A    \n");
 	}
+	/* close dir file */
 	file_close(fd);
 	return PASS;
 }
 
+/*
+ *	test_cat
+ *	Description:    simulative cat command
+ *	inputs:         nothing
+ *	outputs:	    nothing
+ *	effects:	    file open, close, read, write
+ *					print all contents of the file having the given name
+*/
 int test_cat(const char* fname){
-	int32_t fd, cnt;
-	int i;
-	uint8_t buf[1024];
+	int32_t fd, cnt;	/* file descriptor and counter of read bytes */
+	int i;				/* loop index for output char to screen */
+	uint8_t buf[T_FILE_READ_SIZE];	/* buffer of one read */
 
+	/* open the file */
 	if (-1 == (fd = file_open(fname))){
 		printf("file open failed\n");
 		return FAIL;
 	}
 
-	while (0 != (cnt = file_read(fd, buf, 1024))){
+	/* read data in the file multiple time until at the end of the file */
+	while (0 != (cnt = file_read(fd, buf, T_FILE_READ_SIZE))){
 		if (-1 == cnt) {
 			printf("file read failed\n");
 			return FAIL;
 		}
+		/* put char onto screen */
 		for (i = 0; i < cnt; i++)
 			putc(buf[i]);
 	}
+	/* close the file */
 	file_close(fd);
 	return PASS;
 }
@@ -420,9 +481,12 @@ int test_cat(const char* fname){
 
 /* Test suite entry point */
 void launch_tests(){
-	//TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));
-	test_terminal();
+	/* just for emilinating not-used error */
+	char* a = test_fname_list[0];
+	a = a;
+	
+	TEST_OUTPUT("test_ls", test_ls());
+	// test_terminal();
 	// test_rtc();
 	// test_cat(test_fname_list[T_EXE_NAME]);
-	
 }

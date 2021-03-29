@@ -22,9 +22,14 @@ extern int32_t rtc_init();
 extern int32_t rtc_set_fre(int32_t fre);
 /* the interrupt handler for rtc */
 extern void rtc_handler();
+/* open the rtc driver */
 extern int32_t rtc_open(const uint8_t* filename);
+/* RTC read. wait until next new interrupt */
 extern int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes);
+/* RTC write. It reads the frequency in buf and set the corresponding RTC frequency */
 extern int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes);
+/* virtualized RTC read */
 extern int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes);
+/*  close the RTC driver and reset some variable */
 extern int32_t rtc_close(int32_t fd);
 #endif // !_RTC_H

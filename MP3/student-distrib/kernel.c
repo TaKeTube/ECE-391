@@ -14,7 +14,7 @@
 #include "paging.h"
 #include "filesys.h"
 
-#define RUN_TESTS
+// #define RUN_TESTS
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -26,6 +26,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     multiboot_info_t *mbi;
 
+    /* start addr of the file system image */
     uint32_t filesys_start_addr;
 
     /* Clear the screen. */
@@ -161,6 +162,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* init keyboard */
     keyboard_init();
 
+    /* init file system */
     filesys_init((void*)filesys_start_addr);
 
     /* Enable interrupts */

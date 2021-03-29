@@ -19,7 +19,9 @@
 #define ALT_UP		    0xB8
 
 
+/* keyboard read buffer */
 volatile unsigned char read_buffer[READ_BUFFER_SIZE];
+/* a flag to communicate between keyboard and terminal, 1 means a terminal_read is ready to perform */
 volatile int is_ready;
 
 
@@ -27,7 +29,9 @@ volatile int is_ready;
 extern void keyboard_init();
 /* keyboard interrupt handler */
 extern void keyboard_handler();
+/* echo a pressed key to screen */
 extern void print_key(unsigned char scancode);
+/* clear the keyboard read buffer */
 extern void clr_read_buffer();
 
 
