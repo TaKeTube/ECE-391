@@ -36,6 +36,7 @@ int32_t terminal_read(int32_t fd, char* buf, int32_t nbytes)
     for (i = 0; (i < nbytes) && (i < 127); i++)
     {
         buf[i] = read_buffer[i];
+        
         if (read_buffer[i] == '\n')
         {
             k = 1;
@@ -57,7 +58,7 @@ int32_t terminal_write(int32_t fd, char* buf, int32_t nbytes)
         
     /* loop index */
     int i = 0, j = 0;
-    for (i = 0; i < nbytes; i++)
+    for (i = 0; (i < nbytes) && (i < 127); i++)
     {
         putc(buf[i]);
         if (buf[i] != '\0')

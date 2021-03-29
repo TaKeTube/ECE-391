@@ -83,7 +83,7 @@ int32_t rtc_set_fre(int32_t fre)
     outb(RTC_REGA, RTC_PORT); // set index to register A
     prev = inb(RTC_DATA); // get value
     outb(RTC_REGA, RTC_PORT); // set index again
-    outb((prev & 0xF0) | rate, RTC_PORT); // set the corresponding bits (0-3) 
+    outb((prev & 0xF0) | rate, RTC_DATA); // set the corresponding bits (0-3) 
 
     /* enable the NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0

@@ -154,12 +154,12 @@ void print_key(unsigned char scancode){
     // we do not need print these NULL keys
     if (key == '\0')
     {
-        is_ready = 1;
+        // is_ready = 1;
         return;
     }
     // for ctrl+L, we clear the screen
     else if (ctrl_state){
-        if (key == 'l'){
+        if (key == 'l' || key == 'L'){
             clear();
             reset_screen_xy();
             return;
@@ -173,8 +173,8 @@ void print_key(unsigned char scancode){
         read_buffer_ptr += 1;
         putc(key);
     }
-    else
-        is_ready = 1;
+    // else
+    //     is_ready = 1;
     return;
 }
 

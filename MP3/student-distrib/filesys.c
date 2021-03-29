@@ -16,21 +16,34 @@ void filesys_init(void* filesys){
     inode_arr = &((inode_t*)filesys)[1];
     data_block_arr = &((data_block_t*)filesys)[1+boot_block->inode_num];
     cur_file_inode_ptr = NULL;
+    cur_file_inode_idx = -1;
+    cur_file_offset = -1;
+    cur_dentry_idx = -1;
 }
 
 /* Assume that only 32 length file name would not have a '\0' at the end */
 int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
-    int i;                  /* iterated index for dentries in boot block */
-    dentry_t* cur_dentry;   /* pointer to current dentry */
+    int i;                                       /* iterated index for dentries in boot block */
+    int fname_len;                               /* length of filename */
+    uint8_t* fname_buf[MAX_FILE_NAME_LEN] = {0}; /* filename buffer for string comparing */
+    dentry_t* cur_dentry;                        /* pointer to current dentry */
 
     /* sanity check */
-    if(fname == NULL || dentry == NULL || strlen((int8_t*)fname) > MAX_FILE_NAME_LEN)
+    if(fname == NULL || dentry == NULL)
         return -1;
+
+    /* deal with very long file name */
+    fname_len = strlen((int8_t*)fname);
+    if(fname_len > MAX_FILE_NAME_LEN)
+        strncpy((int8_t*)fname_buf, (int8_t*)fname, MAX_FILE_NAME_LEN);
+    else
+        strcpy((int8_t*)fname_buf, (int8_t*)fname);
+
     /* traverse all dentry until finding the corresponding dentry */
     for(i = 0; i < boot_block->dir_num; i++){
         cur_dentry = &(boot_block->dentry_arr[i]);
         /* compare the file name */
-        if(!strncmp((int8_t*)fname, (int8_t*)(cur_dentry->file_name), MAX_FILE_NAME_LEN)){
+        if(!strncmp((int8_t*)fname_buf, (int8_t*)(cur_dentry->file_name), MAX_FILE_NAME_LEN)){
             /* copy the contents */
             *dentry = *cur_dentry;
             /* success, return 0 */
@@ -60,7 +73,7 @@ int32_t read_data(uint32_t inode_idx, uint32_t offset, uint8_t* buf, uint32_t nb
     inode_t* cur_inode = &(inode_arr[inode_idx]);
 
     /* sanity check */
-    if(buf == NULL || buf == NULL || inode_idx >= boot_block->inode_num || offset > BLOCK_SIZE_BYTE)
+    if(buf == NULL || inode_idx >= boot_block->inode_num)
         return -1;
 
     cur_block_num = offset/BLOCK_SIZE_BYTE;
@@ -105,13 +118,16 @@ int32_t file_open(const char* filename){
 int32_t file_close(int32_t fd){
     /* clear the pointer to the current opened file's inode */
     cur_file_inode_ptr = NULL;
+    cur_file_inode_idx = -1;
+    cur_file_offset = -1;
+    cur_dentry_idx = -1;
     return 0;
 }
 
 int32_t file_read(int32_t fd, void* buf, int32_t nbytes){
     int read_bytes;
     /* check whether the file is open */
-    if(cur_file_inode_ptr == NULL)
+    if(cur_file_inode_ptr == NULL || cur_file_inode_idx == -1 || cur_file_offset == -1)
         return -1;
     /* read data from file */
     if((read_bytes = read_data(cur_file_inode_idx, cur_file_offset, buf, nbytes))==-1)
@@ -133,8 +149,11 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes){
     int i;
 
     /* sanity check */
-    if(buf == NULL || cur_dentry_idx >= boot_block->dir_num)
+    if(buf == NULL || cur_dentry_idx == -1)
         return -1;
+
+    if(cur_dentry_idx >= boot_block->dir_num)
+        return 0;
 
     /* if the file name is bigger than 32, just copy 32 char */
     read_len = MAX_FILE_NAME_LEN<nbytes?MAX_FILE_NAME_LEN:nbytes;
@@ -146,7 +165,7 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes){
 
     strncpy((int8_t*)buf, (int8_t*)strbuf, read_len);
 
-    return 0;
+    return read_len;
 }
 
 int32_t dir_write(int32_t fd, void* buf, int32_t nbytes){
@@ -154,10 +173,17 @@ int32_t dir_write(int32_t fd, void* buf, int32_t nbytes){
 }
 
 int32_t dir_open(const char* filename){
-    return -1;
+    cur_dentry_idx = 0;
+    return 0;
 }
 
 int32_t dir_close(int32_t fd){
     return -1;
 }
 
+uint32_t get_file_size(dentry_t* dentry){
+    if(dentry->file_type == 2)
+        return inode_arr[dentry->inode_id].file_size;
+    else
+        return 0;
+}

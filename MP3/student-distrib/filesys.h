@@ -1,5 +1,5 @@
-#ifndef _IDT_H
-#define _IDT_H
+#ifndef _FILESYS_H
+#define _FILESYS_H
 
 #include "types.h"
 
@@ -38,6 +38,7 @@ typedef struct data_block_t{
     uint8_t     data[BLOCK_SIZE_BYTE];
 } data_block_t;
 
+void filesys_init(void* filesys);
 int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry);
 /* read entry in the boot block in order */
 int32_t read_dentry_by_index(uint32_t idx, dentry_t* dentry);
@@ -52,5 +53,7 @@ int32_t dir_open(const char* filename);
 int32_t dir_close(int32_t fd);
 int32_t dir_read(int32_t fd, void* buf, int32_t nbytes);
 int32_t dir_write(int32_t fd, void* buf, int32_t nbytes);
+
+uint32_t get_file_size(dentry_t* dentry);
 
 #endif

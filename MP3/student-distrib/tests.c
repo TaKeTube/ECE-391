@@ -5,6 +5,8 @@
 #include "idt.h"
 #include "rtc.h"
 #include "terminal.h"
+#include "filesys.h"
+
 
 #define PASS 1
 #define FAIL 0
@@ -233,6 +235,8 @@ int test_bad_input(){
 	return result;
 }
 
+
+/* Checkpoint 2 tests */
 /* terminal driver test*/
 int test_terminal(){
 	char buffer[128];
@@ -242,9 +246,9 @@ int test_terminal(){
 	{
 		r = terminal_read(0, buffer, 128);
 		printf("read buf: %d\n", r);
-		if(r > 0)
+		if(r >= 0)
 			w = terminal_write(0, buffer, 128);
-		printf("read buf: %d, wrtie buf:%d\n", r, w);
+		printf("read buf: %d, write buf:%d\n", r, w);
 		// printf("%d\n", r);
 		// printf("%d\n", w);
 		if(r != w)
@@ -253,7 +257,162 @@ int test_terminal(){
 	return -1;
 }
 
-/* Checkpoint 2 tests */
+/* RTC test */
+int test_rtc(){
+	int rtc_counter = 0;
+	int i;
+	int portition;
+	printf("Starting RTC Test...\n");
+	rtc_init();
+	rtc_open(0);
+
+	portition = 2;
+	rtc_counter = 0;
+	printf("Switch to %d Hz\n", portition);
+	rtc_write(0, (void*)&portition, 4);
+	for (i=0; i<20; i++){
+		rtc_read(0, (int*)0, 0);
+		rtc_counter ++;
+		printf("RTC counter:%d\n", rtc_counter);
+	}
+    
+	printf("Wait for 2 seconds....\n");
+	for (i=0; i<4; i++){
+		rtc_read(0, (int*)0, 0);
+	}
+
+	portition = 1024;
+	rtc_counter = 0;
+	printf("Switch to %d Hz\n", portition);
+
+	printf("Wait for 2 seconds....\n");
+	for (i=0; i<4; i++){
+		rtc_read(0, (int*)0, 0);
+	}
+
+	rtc_write(0, (void*)&portition, 4);
+	for (i=0; i<5000; i++){
+		rtc_read(0, (int*)0, 0);
+		rtc_counter ++;
+		printf("RTC counter:%d\n", rtc_counter);
+	}
+
+	portition = 2;
+	rtc_write(0, (void*)&portition, 4);
+	printf("Wait for 2 seconds....\n");
+	for (i=0; i<4; i++){
+		rtc_read(0, (int*)0, 0);
+	}
+
+	printf("Now test virtual read...\n");
+	printf("Switch to 1024/10 = 102.4 Hz. The entire counter should last around 3 seconds\n");
+	printf("Wait for 2 seconds....\n");
+	for (i=0; i<4; i++){
+		rtc_read(0, (int*)0, 0);
+	}
+
+	printf("virtual read start...\n");
+	portition = 10;
+	for (i=0;i<300;i++)
+	{
+		rtc_virtread(0,(void*)&portition, 4);
+	}
+	
+	printf("Now Switch to 1024/100 = 10.24 Hz. The entire counter should last around 10 seconds\n");
+	portition = 2;
+	rtc_write(0, (void*)&portition, 4);
+	printf("Wait for 2 seconds....\n");
+	for (i=0; i<4; i++){
+		rtc_read(0, (int*)0, 0);
+	}
+	
+	printf("virtual read start...\n");
+	portition = 100;
+	for (i=0;i<100;i++)
+	{
+		rtc_virtread(0,(void*)&portition, 4);
+	}
+
+	rtc_close(0);
+	printf("Test over\n");
+	return PASS;
+}
+
+#define T_RTC_NAME				5
+#define T_DIR_NAME				0
+#define T_EXE_NAME				9
+#define T_FRAME0_NAME			10
+#define T_FRAME1_NAME			15
+#define T_VERY_LARGE_FILE_NAME	11
+#define T_INCOMPLETE_NAME		17
+#define T_UNREAL_NAME			18
+
+static char* test_fname_list[20] = {
+	/* valid file name */
+	".", "sigtest", "shell", "grep", "syserr", "rtc", "fish", "counter", "pingpong",
+	"cat", "frame0.txt", "verylargetextwithverylongname.txt", "ls", "testprint",
+	"created.txt", "frame1.txt", "hello", 
+	/* invalid test name */
+	"frame", "unreal"
+};
+
+int test_ls(){
+	TEST_HEADER;
+
+	int fd, cnt;
+	dentry_t dentry;
+	uint8_t fname[MAX_FILE_NAME_LEN + 1] = {0};		// last \0 for very large file name
+
+	if (-1 == (fd = dir_open((char*)"."))){
+        printf("directory open failed\n");
+        return FAIL;
+    }
+
+	while (0 != (cnt = dir_read(fd, fname, MAX_FILE_NAME_LEN))) {
+		if (-1 == cnt) {
+			printf("directory read failed\n");
+			return FAIL;
+		}
+		/* get file information */
+		if (0 != read_dentry_by_name(fname, &dentry)){
+			printf("directory entry read failed\n");
+			return FAIL;
+		}
+		/* print file information */
+		printf("File Name: %s\n", fname);
+		printf("    Type: %d    ", dentry.file_type);
+		/* if is usual file, print size of the file */
+		if (dentry.file_type == FILE_TYPE)
+			printf("Size: %d B   \n", get_file_size(&dentry));
+		else
+			printf("Size: N/A    \n");
+	}
+	file_close(fd);
+	return PASS;
+}
+
+int test_cat(const char* fname){
+	int32_t fd, cnt;
+	int i;
+	uint8_t buf[1024];
+
+	if (-1 == (fd = file_open(fname))){
+		printf("file open failed\n");
+		return FAIL;
+	}
+
+	while (0 != (cnt = file_read(fd, buf, 1024))){
+		if (-1 == cnt) {
+			printf("file read failed\n");
+			return FAIL;
+		}
+		for (i = 0; i < cnt; i++)
+			putc(buf[i]);
+	}
+	file_close(fd);
+	return PASS;
+}
+
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
@@ -261,21 +420,9 @@ int test_terminal(){
 
 /* Test suite entry point */
 void launch_tests(){
-	//TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));s
-	// test_terminal_read_write();
-	// test_terminal_read_write();
+	//TEST_OUTPUT("test_paging_init", test_paging_init(T_VALID));
 	test_terminal();
-	// char a[5] = {'a', 's', 's', 's', 's'};
-	// char buf[5] = {'b', 'd', 'd', 's', 's'};
-	// int i;
-	// terminal_write(0, a, 5);
-	// // exception_test(0x00);
-	// // launch your tests here
-	// // terminal_read(0, buf, 5);
-	// for (i=0; i<5; i++)
-	// {
-	// 	printf("%c", buf[i]);
-	// }
-	// printf(buf);
-	// terminal_write(0, buf, 5);
+	// test_rtc();
+	// test_cat(test_fname_list[T_EXE_NAME]);
+	
 }

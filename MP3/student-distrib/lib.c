@@ -227,7 +227,7 @@ void scroll_up() {
 	int y;
 
     // shift existing content up, and fill last row with spaces
-    if (screen_y>=NUM_ROWS){
+    while (screen_y>=NUM_ROWS){
 	    for (x = 0; x < NUM_COLS; x++) {
 	    	for (y = 0; y < NUM_ROWS-1; y++) {
 	    		*(uint8_t *)(video_mem + ((NUM_COLS*y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS*(y+1) + x) << 1));
