@@ -158,11 +158,11 @@ int32_t file_open(const char* filename){
     dentry_t dentry;    /* temp dentry variable */
 
     /* read dentry by filename & sanity check */
-    if(read_dentry_by_name((uint8_t*)filename, &dentry) != 0 || dentry.file_type != FILE_TYPE || dentry.inode_id >= boot_block->inode_num)
+    if(read_dentry_by_name((uint8_t*)filename, &dentry) != 0 || dentry.file_type != FILE_TYPE || dentry.inode_idx >= boot_block->inode_num)
         return -1;
     /* set the global variable (pointer to the current opened file's inode) */
-    cur_file_inode_idx = dentry.inode_id;
-    cur_file_inode_ptr = &(inode_arr[dentry.inode_id]);
+    cur_file_inode_idx = dentry.inode_idx;
+    cur_file_inode_ptr = &(inode_arr[dentry.inode_idx]);
     cur_file_offset = 0;
 
     /* success, return 0 */
@@ -313,7 +313,7 @@ int32_t dir_write(int32_t fd, void* buf, int32_t nbytes){
 uint32_t get_file_size(dentry_t* dentry){
     if(dentry->file_type == FILE_TYPE)
         /* normal file */
-        return inode_arr[dentry->inode_id].file_size;
+        return inode_arr[dentry->inode_idx].file_size;
     else
         /* RTC or dir */
         return 0;

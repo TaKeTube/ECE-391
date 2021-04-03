@@ -17,7 +17,7 @@
 typedef struct dentry_t{
     char        file_name[MAX_FILE_NAME_LEN];
     uint32_t    file_type;
-    uint32_t    inode_id;
+    uint32_t    inode_idx;
     uint8_t     reserved[DENTRY_RESERVED_BYTE];
 } dentry_t;
 
