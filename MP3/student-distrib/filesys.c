@@ -1,13 +1,11 @@
 #include "lib.h"
 #include "filesys.h"
+#include "syscall.h"
 
 void* filesys_addr;             /* pointer points to the start of file system */
 boot_block_t* boot_block;       /* pointer points to the boot block */
 data_block_t* data_block_arr;   /* pointer points to the data block array */
 inode_t* inode_arr;             /* pointer points to the inode array */
-inode_t* cur_file_inode_ptr;    /* pointer points to the current file inode */
-int cur_file_inode_idx;         /* curren file inode index */
-int cur_file_offset;            /* offset in the current opened file */
 int cur_dentry_idx;             /* current file dentry index */
 
 /*
@@ -25,9 +23,6 @@ void filesys_init(void* filesys){
     inode_arr = &((inode_t*)filesys)[1];
     data_block_arr = &((data_block_t*)filesys)[1+boot_block->inode_num];
     /* init some global variables (which will be file descriptor array in the future) */
-    cur_file_inode_ptr = NULL;
-    cur_file_inode_idx = -1;
-    cur_file_offset = -1;
     cur_dentry_idx = -1;
 }
 
@@ -160,10 +155,6 @@ int32_t file_open(const char* filename){
     /* read dentry by filename & sanity check */
     if(read_dentry_by_name((uint8_t*)filename, &dentry) != 0 || dentry.file_type != FILE_TYPE || dentry.inode_idx >= boot_block->inode_num)
         return -1;
-    /* set the global variable (pointer to the current opened file's inode) */
-    cur_file_inode_idx = dentry.inode_idx;
-    cur_file_inode_ptr = &(inode_arr[dentry.inode_idx]);
-    cur_file_offset = 0;
 
     /* success, return 0 */
     return 0;
@@ -178,10 +169,6 @@ int32_t file_open(const char* filename){
  * SIDE AFFECTS: global pointers relates to the current file cleared
  */
 int32_t file_close(int32_t fd){
-    /* clear the pointer to the current opened file's inode */
-    cur_file_inode_ptr = NULL;
-    cur_file_inode_idx = -1;
-    cur_file_offset = -1;
     return 0;
 }
 
@@ -199,13 +186,13 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes){
     int read_bytes; /* number of read bytes */
 
     /* check whether the file is open */
-    if(cur_file_inode_ptr == NULL || cur_file_inode_idx == -1 || cur_file_offset == -1)
+    if(cur_fd_array[fd].flags == 0)
         return -1;
     /* read data from file */
-    if((read_bytes = read_data(cur_file_inode_idx, cur_file_offset, buf, nbytes))==-1)
+    if((read_bytes = read_data(cur_fd_array[fd].inode_idx, cur_fd_array[fd].file_offset, buf, nbytes))==-1)
         return -1;
     /* update offset if success */
-    cur_file_offset += read_bytes;
+    cur_fd_array[fd].file_offset += read_bytes;
     /* return the number of bytes read */
     return read_bytes;
 }

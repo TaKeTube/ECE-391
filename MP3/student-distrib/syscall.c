@@ -27,7 +27,7 @@ int32_t open(const char* fname){
         return -1;
 
     /* if success, set the file descriptor */
-    cur_fd_array[fd].inode_idx = (dentry.file_type == RTC_TYPE) ? -1 : dentry.inode_idx;
+    cur_fd_array[fd].inode_idx = (dentry.file_type == FILE_TYPE) ? dentry.inode_idx : 0;
     cur_fd_array[fd].file_offset = 0;
     cur_fd_array[fd].flags = 1;
 
