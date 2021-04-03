@@ -2,9 +2,11 @@
 #define _SYSCALL_H
 
 #include "types.h"
+#include "filesys.h"
 
-#define MAX_ARG_LEN     128
-#define MAX_FILE_NUM    8
+#define MAX_ARG_LEN         128
+#define MAX_FILE_NUM        8
+#define FDA_FILE_START_IDX  2
 
 typedef struct pcb_t {
     /* file descriptor array */
@@ -26,13 +28,17 @@ typedef struct file_desc_t {
 
 
 typedef struct file_op_table_t {
-    int32_t (*open)  (const char* filename);
+    int32_t (*open)  (const char* fname);
     int32_t (*close) (int32_t fd);
     int32_t (*read)  (int32_t fd, void* buf, int32_t nbytes);
     int32_t (*write) (int32_t fd, void* buf, int32_t nbytes);
 } file_op_table_t;
 
-int32_t open(const char* filename);
+file_desc_t* cur_fd_array;
+
+file_op_table_t file_op_table_arr[FILE_TYPE_NUM];
+
+int32_t open(const char* fname);
 
 int32_t close(int32_t fd);
 

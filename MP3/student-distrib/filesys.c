@@ -182,7 +182,6 @@ int32_t file_close(int32_t fd){
     cur_file_inode_ptr = NULL;
     cur_file_inode_idx = -1;
     cur_file_offset = -1;
-    cur_dentry_idx = -1;
     return 0;
 }
 
