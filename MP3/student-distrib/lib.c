@@ -190,6 +190,8 @@ void putc(uint8_t c) {
     screen_x++;
     // screen_x %= NUM_COLS;
     // screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+
+    update_cursor(screen_x, screen_y);
 }
 
 /* void delc();
@@ -204,8 +206,10 @@ void delc() {
 	else
 		screen_x--;
     
-    *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = ' ';
+    *(uint8_t *)(video_mem + ((NUM_COLS* screen_y + screen_x) << 1)) = ' ';
     *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+
+    update_cursor(screen_x, screen_y);
 }
 
 /* void newline();
@@ -216,6 +220,7 @@ void newline() {
     screen_y ++;
     scroll_up();
     screen_x = 0;
+    update_cursor(screen_x, screen_y);
 }
 
 /* void scroll_up();
@@ -535,3 +540,56 @@ void test_interrupts(void) {
     }
 }
 
+/* void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
+ * Inputs: cursor_start, cursor_end
+ * Return Value: void
+ * Function: Enabling the cursor also allows you to set the start and end scanlines, 
+ * the rows where the cursor starts and ends. */
+void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
+{
+	outb(0x3D4, 0x0A);
+	outb(0x3D5, (inb(0x3D5) & 0xC0) | cursor_start);
+ 
+	outb(0x3D4, 0x0B);
+	outb(0x3D5, (inb(0x3D5) & 0xE0) | cursor_end);
+}
+
+/* void disable_cursor()
+ * Inputs: void
+ * Return Value: void
+ * Function: disables cursor */
+void disable_cursor()
+{
+	outb(0x3D4, 0x0A);
+	outb(0x3D5, 0x20);
+}
+
+/* void update_cursor(int x, int y)
+ * Inputs: x, y
+ * Return Value: void
+ * Function: moves cursor */
+void update_cursor(int x, int y)
+{
+    if (x==NUM_COLS){
+        x = 0;
+        y ++;
+    }
+        
+	uint16_t position = NUM_COLS*y + x;
+	outw(0x000E | (position & 0xFF00), 0x03D4);
+	outw(0x000F | ((position << 8) & 0xFF00), 0x03D4);
+}
+
+/* void get_cursor_position(void)
+ * Inputs: void
+ * Return Value: void
+ * Function: get cursor position, pos = y * VGA_WIDTH + x */
+uint16_t get_cursor_position(void)
+{
+    uint16_t pos = 0;
+    outb(0x3D4, 0x0F);
+    pos |= inb(0x3D5);
+    outb(0x3D4, 0x0E);
+    pos |= ((uint16_t)inb(0x3D5)) << 8;
+    return pos;
+}

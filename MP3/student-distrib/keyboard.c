@@ -165,6 +165,7 @@ void print_key(unsigned char scancode){
         if (key == 'l' || key == 'L'){
             clear();
             reset_screen_xy();
+            update_cursor(0,0);
             return;
         }
         else if (key == 'c')
@@ -197,3 +198,4 @@ void clr_read_buffer(){
 	is_ready = 0;
     return;
 }
+

@@ -21,6 +21,11 @@ uint32_t strlen(const int8_t* s);
 void clear(void);
 void reset_screen_xy();
 
+extern void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
+extern void disable_cursor();
+extern void update_cursor(int x, int y);
+extern uint16_t get_cursor_position(void);
+
 void* memset(void* s, int32_t c, uint32_t n);
 void* memset_word(void* s, int32_t c, uint32_t n);
 void* memset_dword(void* s, int32_t c, uint32_t n);
