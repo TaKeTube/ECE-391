@@ -10,10 +10,11 @@
 #define MAX_DENTRY_NUM              (BLOCK_SIZE_BYTE-64)/64
 #define MAX_INODE_DATA_BLOCK_NUM    (BLOCK_SIZE_BYTE-4)/4
 
-#define FILE_TYPE_NUM   3
+#define FILE_TYPE_NUM   4
 #define RTC_TYPE        0
 #define DIR_TYPE        1
 #define FILE_TYPE       2
+#define STD_TYPE        3
 
 typedef struct dentry_t{
     char        file_name[MAX_FILE_NAME_LEN];

@@ -136,3 +136,34 @@ void activate_video()
     /* set the present field to be 1, the page is now valid */
     page_table[VIDEO >> MEM_OFFSET_BITS].p = 1;
 }
+
+void set_paging(uint32_t pid)
+{
+    // magic number here
+    uint32_t index = 0x8000000 / 0x400000;  // 128mB / 4mB
+	uint32_t physical_addr = 0x800000 + pid * 0x400000;
+
+    /* initialize the program 4MB page */
+    page_directory[index].p           = 1;    // present
+    page_directory[index].r_w         = 1;
+    page_directory[index].u_s         = 1;    // user mode
+    page_directory[index].pwt         = 0;
+    page_directory[index].pcd         = 0;
+    page_directory[index].a           = 0;
+    page_directory[index].reserved    = 0;
+    page_directory[index].ps          = 1;    // 4mB page
+    page_directory[index].g           = 0;
+    page_directory[index].avail       = 0;
+    page_directory[index].base_addr   = physical_addr >> MEM_OFFSET_BITS;
+
+	flush_TLB();
+}
+
+
+void flush_TLB() 
+{
+	asm volatile(
+        "movl %cr3, %eax;"
+        "movl %eax, %cr3;"
+    );
+}

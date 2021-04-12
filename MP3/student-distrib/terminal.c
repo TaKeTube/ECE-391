@@ -15,7 +15,7 @@
 *	outputs:	    nothing
 *	effects:	    simply does nothing and returns 0 so far
 */
-int32_t terminal_open(int32_t fd)
+int32_t terminal_open(const char* filename)
 {
     return 0;
 }
@@ -43,10 +43,10 @@ int32_t terminal_close(int32_t fd)
 *	returns:	    the actual number of bytes that are read successfully
 *	effects:	    read the keyboard input
 */
-int32_t terminal_read(int32_t fd, char* buf, int32_t nbytes)
+int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes)
 {
     /* sanity check to see whether the read operation is valid */
-    if (0 == buf || 0 == nbytes)
+    if (NULL == buf || 0 == nbytes)
         return -1;
     
     /* loop index*/
@@ -74,14 +74,14 @@ int32_t terminal_read(int32_t fd, char* buf, int32_t nbytes)
     for (i = 0; (i < nbytes) && (i < MAX_TERMINAL_BUF_SIZE-1); i++)
     {
         /* fill the buf with terminal input */
-        buf[i] = read_buffer[i];
+        ((char*)buf)[i] = read_buffer[i];
         
         /* if current char is enter, the input is over */
         if (read_buffer[i] == '\n')
         {
             /* set is_over and change the current, last char in buffer to be \0 */
             is_over= 1;
-            buf[i] = '\0';
+            ((char*)buf)[i] = '\0';
         }
         /* if the input hasn't over, increment return value */
         if (is_over == 0)
@@ -102,10 +102,10 @@ int32_t terminal_read(int32_t fd, char* buf, int32_t nbytes)
 *   outputs:        the chars in the buffer are outputted to terminal
 *	effects:	    write infomation to terminal
 */
-int32_t terminal_write(int32_t fd, char* buf, int32_t nbytes)
+int32_t terminal_write(int32_t fd, void* buf, int32_t nbytes)
 {
     /* sanity check to see whether the write operation is valid */
-    if (0 == buf || 0 == nbytes)
+    if (NULL == buf || 0 == nbytes)
         return -1;
         
     /* loop index */
@@ -116,10 +116,10 @@ int32_t terminal_write(int32_t fd, char* buf, int32_t nbytes)
     for (i = 0; i < nbytes; i++)
     {
         /* write the current char in the buffer to terminal */
-        putc(buf[i]);
+        putc(((char*)buf)[i]);
         /* if the current char is not end of the string in buffer, increment ret */
-        if (buf[i] != '\0')
-        ret++;
+        if (((char*)buf)[i] != '\0')
+            ret++;
     }
     /* return the number of bytes written */
     return ret;

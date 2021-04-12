@@ -230,11 +230,11 @@ int32_t dir_open(const char* filename){
  * DESCRIPTION: Close a directory. Not used.
  * INPUT: fd -- file descriptor. Not used.
  * OUTPUT: none
- * RETURN: -1
+ * RETURN: 0
  * SIDE AFFECTS: none
  */
 int32_t dir_close(int32_t fd){
-    return -1;
+    return 0;
 }
 
 /*

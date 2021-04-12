@@ -39,7 +39,7 @@ system_call:
     jl      invalid_call
 
     /* call specific routine using a jump table */
-    call    *syscall_table(0, %eax, 4)
+    call    *syscall_table(, %eax, 4)
     jmp     syscall_done
 
 invalid_call:

@@ -13,8 +13,9 @@
 #include "keyboard.h"
 #include "paging.h"
 #include "filesys.h"
+#include "syscall.h"
 
-// #define RUN_TESTS
+#define RUN_TESTS   0
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -165,18 +166,25 @@ void entry(unsigned long magic, unsigned long addr) {
     /* init file system */
     filesys_init((void*)filesys_start_addr);
 
+    /* init file operation table */
+    file_op_table_init();
+
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
-    /*printf("Enabling Interrupts\n");
-    sti();*/
+    printf("Enabling Interrupts\n");
+    sti();
 
-#ifdef RUN_TESTS
+    clear();
+
+#if RUN_TESTS
     /* Run tests */
     launch_tests();
-#endif
+#else
     /* Execute the first program ("shell") ... */
+    execute((uint8_t*)"shell");
+#endif
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");

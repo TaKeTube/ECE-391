@@ -66,4 +66,7 @@ void enable_paging();
 /* activate video memory page to be valid */
 void activate_video();
 
+void set_paging(uint32_t pid);
+void flush_TLB();
+
 #endif

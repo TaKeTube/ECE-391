@@ -8,5 +8,7 @@
 extern void idt_init();
 /* Set interrupt gate in IDT of one interrupt using the address of the interrupt handler */
 inline void set_intr_gate(unsigned int n, void *addr);
+/* Set trap gate in IDT of system call */
+inline void set_trap_gate(unsigned int vec, void *addr);
 
 #endif

@@ -45,7 +45,7 @@ void idt_init(){
     set_intr_gate(0x21, int_keyboard);
     set_intr_gate(0x28, int_rtc);
     // System Call
-    set_intr_gate(0x80, system_call);
+    set_trap_gate(0x80, system_call);
     return;
 }
 
@@ -76,14 +76,30 @@ void set_intr_gate(unsigned int vec, void *addr){
     return;
 }
 
-/* 
- * system call
- *   DESCRIPTION: temp handler for system call
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: none
- */
-void system_call(){
-    printf("a system call was called.");
+void set_trap_gate(unsigned int vec, void *addr){
+    if(addr == NULL || vec >= NUM_VEC)
+        return;
+    SET_IDT_ENTRY(idt[vec], addr);
+    idt[vec].seg_selector = KERNEL_CS;      // kernel segment code
+    idt[vec].reserved4 = 0;                 // interrupt specified
+    idt[vec].reserved3 = 1;                 // interrupt specified
+    idt[vec].reserved2 = 1;                 // interrupt specified
+    idt[vec].reserved1 = 1;                 // interrupt specified
+    idt[vec].size = 1;                      // indicate 32 bit interrupt gate
+    idt[vec].reserved0 = 0;                 // interrupt specified
+    idt[vec].dpl = USER_PRIORITY;           // kernel priority (0)
+    idt[vec].present = 1;                   // entry present
+    return;
 }
+
+// /* 
+//  * system call
+//  *   DESCRIPTION: temp handler for system call
+//  *   INPUTS: none
+//  *   OUTPUTS: none
+//  *   RETURN VALUE: none
+//  *   SIDE EFFECTS: none
+//  */
+// void system_call(){
+//     printf("a system call was called.");
+// }

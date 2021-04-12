@@ -1,5 +1,6 @@
 #include "lib.h"
 #include "exception.h"
+#include "syscall.h"
 
 void exc_handler(unsigned int vec);
 
@@ -41,6 +42,9 @@ void exc_handler(unsigned int vec){
     cli();
     printf("EXCEPTION %d:\n", vec);
     printf("%s\n", exception_info[vec]);
+    /* halt the current program if there is */
+    if(cur_fd_array != NULL)
+        halt(HALT_EXCEPTION);
     /* end with infinite loop according to the document */
     while(1);
 }
