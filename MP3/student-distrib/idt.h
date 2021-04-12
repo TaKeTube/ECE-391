@@ -10,5 +10,7 @@ extern void idt_init();
 inline void set_intr_gate(unsigned int n, void *addr);
 /* Set trap gate in IDT of system call */
 inline void set_trap_gate(unsigned int vec, void *addr);
+/* Set trap gate in IDT (interrupt descripter table) of system call */
+inline void set_trap_gate(unsigned int vec, void *addr);
 
 #endif

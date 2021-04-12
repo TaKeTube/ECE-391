@@ -244,7 +244,7 @@ int32_t dir_close(int32_t fd){
  *        buf -- buffer to be filled
  *        nbytes -- number of bytes need to be read from current file name
  * OUTPUT: none
- * RETURN: -1
+ * RETURN: length of read
  * SIDE AFFECTS: none
  */
 int32_t dir_read(int32_t fd, void* buf, int32_t nbytes){

@@ -11,7 +11,7 @@
 /*
 *	terminal_open
 *	Description:    open a terminal
-*	inputs:         file descriptor fd
+*	inputs:         filename, not used
 *	outputs:	    nothing
 *	effects:	    simply does nothing and returns 0 so far
 */

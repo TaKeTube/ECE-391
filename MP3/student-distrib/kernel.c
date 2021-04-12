@@ -176,6 +176,7 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
+    /* clear the screen */
     clear();
 
 #if RUN_TESTS

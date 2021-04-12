@@ -137,11 +137,18 @@ void activate_video()
     page_table[VIDEO >> MEM_OFFSET_BITS].p = 1;
 }
 
+/*
+*	set_paging
+*	Description:    set a page for according process
+*	inputs:		    process id
+*	outputs:	    nothing
+*	effects:	    page directory entry in 128MB/4MB is changed
+*/
 void set_paging(uint32_t pid)
 {
     // magic number here
     uint32_t index = 0x8000000 / 0x400000;  // 128mB / 4mB
-	uint32_t physical_addr = 0x800000 + pid * 0x400000;
+    uint32_t physical_addr = 0x800000 + pid * 0x400000;
 
     /* initialize the program 4MB page */
     page_directory[index].p           = 1;    // present
@@ -156,10 +163,17 @@ void set_paging(uint32_t pid)
     page_directory[index].avail       = 0;
     page_directory[index].base_addr   = physical_addr >> MEM_OFFSET_BITS;
 
-	flush_TLB();
+    /* flush TLB */
+    flush_TLB();
 }
 
-
+/*
+*	flush_TLB
+*	Description:    flush TLB
+*	inputs:		    nothing
+*	outputs:	    nothing
+*	effects:	    TLB is flushed
+*/
 void flush_TLB() 
 {
 	asm volatile(

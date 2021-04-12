@@ -59,26 +59,38 @@ typedef struct pcb_t {
     uint32_t parent_esp0;
 } pcb_t;
 
+/* pointer pointing to current fd array */
 file_desc_t* cur_fd_array;
 
-int32_t open(const char* fname);
-
-int32_t close(int32_t fd);
-
-int32_t read(int32_t fd, void* buf, int32_t nbytes);
-
-int32_t write(int32_t fd, void* buf, int32_t nbytes);
-
+/* system call execute, attempts to load and execute a new program, */
+/* handing off the processor to the new program until it terminates.*/
 int32_t execute(const uint8_t* cmd);
 
+/* terminates a process, returning the specified value to its parent process */
 int32_t halt(uint8_t status);
 
+/* system call open, would call particular device's open function according to the file type */
+int32_t open(const char* fname);
+
+/* system call close, would call particular device's close function according to the file type */
+int32_t close(int32_t fd);
+
+/* system call read, would call particular device's read function according to the file type */
+int32_t read(int32_t fd, void* buf, int32_t nbytes);
+
+/* system call write, would call particular device's write function according to the file type */
+int32_t write(int32_t fd, void* buf, int32_t nbytes);
+
+/* not finised yet */
 int32_t getargs(uint8_t* buf, int32_t nbytes);
 
+/* not finished yet */
 int32_t vidmap();
 
+/* get new process id by finding unoccupied position of pid_array */
 uint32_t get_new_pid();
 
+/* initialize file operation table array */
 void file_op_table_init();
 
 #endif

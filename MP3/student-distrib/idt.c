@@ -76,24 +76,35 @@ void set_intr_gate(unsigned int vec, void *addr){
     return;
 }
 
+/* 
+ * set_trap_gate
+ *   DESCRIPTION: Set trap gate in IDT (interrupt descripter table) of system call
+ *                using the address of system call linkage code
+ *                see x86_desc.h for formats
+ *   INPUTS: vec -- trap vector (0x80 for system call)
+ *           addr -- address of the system call linkage code
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: changes IDT table
+ */
 void set_trap_gate(unsigned int vec, void *addr){
     if(addr == NULL || vec >= NUM_VEC)
         return;
     SET_IDT_ENTRY(idt[vec], addr);
     idt[vec].seg_selector = KERNEL_CS;      // kernel segment code
-    idt[vec].reserved4 = 0;                 // interrupt specified
-    idt[vec].reserved3 = 1;                 // interrupt specified
-    idt[vec].reserved2 = 1;                 // interrupt specified
-    idt[vec].reserved1 = 1;                 // interrupt specified
-    idt[vec].size = 1;                      // indicate 32 bit interrupt gate
-    idt[vec].reserved0 = 0;                 // interrupt specified
-    idt[vec].dpl = USER_PRIORITY;           // kernel priority (0)
+    idt[vec].reserved4 = 0;                 // trap specified
+    idt[vec].reserved3 = 1;                 // trap specified
+    idt[vec].reserved2 = 1;                 // trap specified
+    idt[vec].reserved1 = 1;                 // trap specified
+    idt[vec].size = 1;                      // indicate 32 bit trap gate
+    idt[vec].reserved0 = 0;                 // trap specified
+    idt[vec].dpl = USER_PRIORITY;           // user priority for system call (3)
     idt[vec].present = 1;                   // entry present
     return;
 }
 
 // /* 
-//  * system call
+//  * old system call handler
 //  *   DESCRIPTION: temp handler for system call
 //  *   INPUTS: none
 //  *   OUTPUTS: none

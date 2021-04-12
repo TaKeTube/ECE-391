@@ -101,3 +101,42 @@
 #### 2021/03/29 Guan
 
 - file system tested over. Surprisingly, no significant bug. One of the insignificant bugs is, I write an always false sanity check in read data. Other bugs are just syntax error or warning.
+
+#### 2021/04/4 Guan
+
+- open/close/read/write finished
+- system call assembly code finished
+- system call frame work initialized
+- no debug
+
+#### 2021/04/4 Xie
+
+- command parser finished
+- paging setting finished
+
+- no debug
+
+#### 2021/04/11 YY
+
+- execute & halt finished
+- no debug
+
+#### 2021/04/12 Guan
+
+- execute & halt modified
+- debug finished
+- **BUG1:** page fault once we start the machine
+  - reason: first instruction address is wrong because we uses the address of the entry point not the content
+  - solution: use the content as eip
+- **BUG2:** general protection fault
+  - reason: Midterm 2: did not set DPL of trap gate
+  - solution: set DPL of trap gate to 3
+- **BUG3:** cannot open RTC
+  - reason: return 0 but not fd in open
+  - solution: return fd in open
+- **BUG4:** std_in_out test failed
+  - reason: not forbid stdin/stdout from write/read
+  - solution: add sanity check for write and read
+- **BUG5:** error_unopened test failed when tested together; success when tested individually.
+  - reason:  sanity check, close would clear the fd if device close return 0; however we let close dir return -1, thus the fd array of dir would not be cleared even if it is closed.
+  - solution: let close dir return 0
