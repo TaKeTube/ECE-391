@@ -54,6 +54,7 @@ typedef struct page_table_entry
 page_dir_entry_t page_directory[NUM_PD_ENTRY] __attribute__((aligned(PAGE_SIZE)));
 /* page table, 4096 aligned */
 page_table_entry_t page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_SIZE)));
+page_table_entry_t vid_page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_SIZE)));
 
 /* init paging */
 void paging_init();

@@ -413,29 +413,66 @@ int32_t write(int32_t fd, void *buf, int32_t nbytes)
     return cur_fd_array[fd].op->write(fd, buf, nbytes);
 }
 
-/* system call haven't be finished yet */
-//7
+/* 
+*	getargs
+*	Description: get args from command and copy it to buffer
+*	Input: 	buf -- destination buffer's pointer
+* 			nbytes -- number of bytes to copy
+*	Output: 0 for success, -1 for failure
+*	Side Effect: copy args to buffer
+*/
 int32_t getargs(uint8_t *buf, int32_t nbytes)
 {
-    return 0;
+    /* get current pcb */
+    pcb_t* pcb_ptr;
+    pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
+
+    /* copy to buffer */
+    if (buf == NULL)
+        return -1;
+    else{
+        strncpy((int8_t*)buf, (int8_t*)pcb_ptr->arg, nbytes);
+        return 0;
+    }
 }
 
-//8
+/* 
+*	vidmap
+*	Description: maps video memory to user space
+*	Input: 	screen_start -- pointer to user video memory
+*	Output: 0 for success, -1 for failure
+*/
 int32_t vidmap(uint8_t** screen_start)
 {
+    /* check if the pointer is in user space */
+    if (screen_start <= ADDR_128MB || screen_start >= ADDR_132MB)
+		return -1;
+
+    *screen_start = ADDR_140MB;
+
+    /* initialize the VIDMAP page */
+    page_directory[VIDMAP_OFFSET].p           = 1;    // present
+    page_directory[VIDMAP_OFFSET].r_w         = 1;
+    page_directory[VIDMAP_OFFSET].u_s         = 1;    // user mode
+    page_directory[VIDMAP_OFFSET].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
+    vid_page_table[0].p = 1;    
+    vid_page_table[0].r_w = 1;  
+    vid_page_table[0].u_s = 1;
+    vid_page_table[0].base_addr = VIDEO_ADDR >> MEM_OFFSET_BITS;
+    flush_TLB();
     return 0;
 }
 
 //9
 int32_t set_handler()
 {
-    return 0;
+    return -1;
 }
 
 //10
 int32_t sigreturn()
 {
-    return 0;
+    return -1;
 }
 
 /*
