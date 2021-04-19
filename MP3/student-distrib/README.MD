@@ -140,3 +140,23 @@
 - **BUG5:** error_unopened test failed when tested together; success when tested individually.
   - reason:  sanity check, close would clear the fd if device close return 0; however we let close dir return -1, thus the fd array of dir would not be cleared even if it is closed.
   - solution: let close dir return 0
+
+#### 2021/04/18 Li
+
+
+- getargs & vidmap finished
+- debug finished
+- **BUG1:** page fault when executing fish
+  - reason: used wrong address for 140MB.
+  - solution: change ADDR_140MB from 0x4600000 to 0x8c00000.
+
+#### 2021/04/19 Guan
+
+- Bug fixed:
+- **BUG1**: when enter rtc and ., the system would execute last program
+  - reason: did not check file type when do executable check 
+  - solution: check file type
+
+- **BUG2**: grep print out something when we does not enter arg
+  - reason: did not check no argument case in get_args
+  - solution: check no argument case in get_args

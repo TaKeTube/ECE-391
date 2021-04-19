@@ -168,6 +168,12 @@ int32_t execute(const uint8_t *cmd)
     }
 
     /* is valid exectuable? */
+    /* check file type */
+    if(check_dentry.file_type != FILE_TYPE){
+        sti();
+        return -1;
+    }
+    /* read magic number of the excutable file */
     read_data(check_dentry.inode_idx, 0, check_buffer, CHECK_BUFFER_SIZE);
     /* check the magic number of the excutable file: 0x7F, E, L, F */
     if(check_buffer[0]!=0x7f && check_buffer[1]!='E' && check_buffer[2]!='L' && check_buffer[3]!= 'F')
@@ -427,13 +433,12 @@ int32_t getargs(uint8_t *buf, int32_t nbytes)
     pcb_t* pcb_ptr;
     pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
 
-    /* copy to buffer */
-    if (buf == NULL)
+    /* sanity check */
+    if (buf == NULL || pcb_ptr->arg[0] == '\0')
         return -1;
-    else{
-        strncpy((int8_t*)buf, (int8_t*)pcb_ptr->arg, nbytes);
-        return 0;
-    }
+    /* copy to buffer */
+    strncpy((int8_t*)buf, (int8_t*)pcb_ptr->arg, nbytes);
+    return 0;
 }
 
 /* 
@@ -446,7 +451,7 @@ int32_t vidmap(uint8_t** screen_start)
 {
     /* check if the pointer is in user space */
     if ((unsigned int)screen_start <= ADDR_128MB || (unsigned int)screen_start >= ADDR_132MB)
-		return -1;
+        return -1;
 
     *screen_start = (uint8_t*)ADDR_140MB;
 
@@ -459,6 +464,7 @@ int32_t vidmap(uint8_t** screen_start)
     vid_page_table[0].r_w = 1;
     vid_page_table[0].u_s = 1;
     vid_page_table[0].base_addr = VIDEO_ADDR >> MEM_OFFSET_BITS;
+    /* flush TLB */
     flush_TLB();
     return 0;
 }
