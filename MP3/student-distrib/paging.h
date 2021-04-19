@@ -16,6 +16,7 @@
 #define PAGE_SIZE           4096
 /* 12bits offset in virtual memory as index in a 4kB-page */
 #define MEM_OFFSET_BITS     12
+#define VIDMAP_OFFSET       35
 
 
 /* struct for page directory entry */

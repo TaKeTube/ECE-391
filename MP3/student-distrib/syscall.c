@@ -445,18 +445,18 @@ int32_t getargs(uint8_t *buf, int32_t nbytes)
 int32_t vidmap(uint8_t** screen_start)
 {
     /* check if the pointer is in user space */
-    if (screen_start <= ADDR_128MB || screen_start >= ADDR_132MB)
+    if ((unsigned int)screen_start <= ADDR_128MB || (unsigned int)screen_start >= ADDR_132MB)
 		return -1;
 
-    *screen_start = ADDR_140MB;
+    *screen_start = (uint8_t*)ADDR_140MB;
 
     /* initialize the VIDMAP page */
     page_directory[VIDMAP_OFFSET].p           = 1;    // present
     page_directory[VIDMAP_OFFSET].r_w         = 1;
     page_directory[VIDMAP_OFFSET].u_s         = 1;    // user mode
     page_directory[VIDMAP_OFFSET].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
-    vid_page_table[0].p = 1;    
-    vid_page_table[0].r_w = 1;  
+    vid_page_table[0].p = 1;
+    vid_page_table[0].r_w = 1;
     vid_page_table[0].u_s = 1;
     vid_page_table[0].base_addr = VIDEO_ADDR >> MEM_OFFSET_BITS;
     flush_TLB();

@@ -19,7 +19,7 @@
 #define KS_SIZE                 8192
 #define KS_BASE_ADDR            0x800000
 #define USER_MEM_ADDR           0x8000000
-#define ADDR_140MB              0x46000000  /* 140MB */
+#define ADDR_140MB              0x08c00000  /* 140MB */
 #define ADDR_128MB              0x08000000
 #define ADDR_132MB              0x08400000
 #define VIDEO_ADDR              0xB8000
