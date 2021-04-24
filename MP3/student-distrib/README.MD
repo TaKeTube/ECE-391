@@ -160,3 +160,10 @@
 - **BUG2**: grep print out something when we does not enter arg
   - reason: did not check no argument case in get_args
   - solution: check no argument case in get_args
+
+#### 2021/04/24 Guan
+
+- Small Bug fixed:
+- 1. Add a break line when halt the program to deal with the deficiency of shell program: it does not change to a new line when a program is terminated.
+  2. Add a sanity check for a filename with length bigger than 32 in find_dentry_by_name().
+

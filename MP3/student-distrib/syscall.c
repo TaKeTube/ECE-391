@@ -71,6 +71,9 @@ int32_t halt(uint8_t status)
     /* decide return value according to the halt status */
     retval = (status == HALT_EXCEPTION) ? HALT_EXCEPTION_RETVAL : (uint16_t)status;
 
+    /* add an line break to fix a small deficiency of the shell program */
+    putc('\n');
+
     /* halt */
     asm volatile("              \n\
         movl    %0, %%esp       \n\

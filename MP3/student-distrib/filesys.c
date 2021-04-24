@@ -42,13 +42,15 @@ int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
     uint8_t* fname_buf[MAX_FILE_NAME_LEN] = {0}; /* filename buffer for string comparing */
     dentry_t* cur_dentry;                        /* pointer to current dentry */
 
+    /* get the length of the file name */
+    fname_len = strlen((int8_t*)fname);
+
     /* sanity check */
-    if(fname == NULL || dentry == NULL)
+    if(fname == NULL || dentry == NULL || fname_len > MAX_FILE_NAME_LEN)
         return -1;
 
     /* deal with very long file name */
-    fname_len = strlen((int8_t*)fname);
-    if(fname_len > MAX_FILE_NAME_LEN)
+    if(fname_len == MAX_FILE_NAME_LEN)
         strncpy((int8_t*)fname_buf, (int8_t*)fname, MAX_FILE_NAME_LEN);
     else
         strcpy((int8_t*)fname_buf, (int8_t*)fname);
