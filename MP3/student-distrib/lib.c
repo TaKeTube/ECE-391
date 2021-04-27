@@ -3,9 +3,9 @@
 
 #include "lib.h"
 
-#define NUM_COLS    80
-#define NUM_ROWS    25
-#define ATTRIB      0x7
+// #define NUM_COLS    80
+// #define NUM_ROWS    25
+// #define ATTRIB      0x7
 
 static int screen_x;
 static int screen_y;
@@ -591,4 +591,21 @@ uint16_t get_cursor_position(void)
     outb(0x3D4, 0x0E);
     pos |= ((uint16_t)inb(0x3D5)) << 8;
     return pos;
+}
+
+int get_screen_x()
+{
+    return screen_x;
+}
+
+int get_screen_y()
+{
+    return screen_y;
+}
+
+void set_screen_xy(int x, int y)
+{
+    screen_x = x;
+    screen_y = y;
+    update_cursor(screen_x, screen_y);
 }

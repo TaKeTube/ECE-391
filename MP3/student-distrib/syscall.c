@@ -466,7 +466,7 @@ int32_t vidmap(uint8_t** screen_start)
     vid_page_table[0].p = 1;
     vid_page_table[0].r_w = 1;
     vid_page_table[0].u_s = 1;
-    vid_page_table[0].base_addr = VIDEO_ADDR >> MEM_OFFSET_BITS;
+    vid_page_table[0].base_addr = VID_PHYS_ADDR >> MEM_OFFSET_BITS;
     /* flush TLB */
     flush_TLB();
     return 0;
@@ -482,6 +482,29 @@ int32_t set_handler()
 int32_t sigreturn()
 {
     return -1;
+}
+
+int32_t vid_remap(uint8_t* phys_addr)
+{
+    /* sanity check */
+    if(phys_addr == NULL)
+        return -1;
+
+    uint32_t offset = ((uint32_t)phys_addr) / PAGE_4MB_SIZE;
+
+    page_directory[offset].p           = 1;    // present
+    page_directory[offset].r_w         = 1;
+    page_directory[offset].u_s         = 1;    // user mode
+    page_directory[offset].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
+    vid_page_table[0].p = 1;
+    vid_page_table[0].r_w = 1;
+    vid_page_table[0].u_s = 1;
+    vid_page_table[0].base_addr = ((uint32_t)phys_addr) >> MEM_OFFSET_BITS;
+
+    /* flush TLB */
+    flush_TLB();
+
+    return 0;
 }
 
 /*
@@ -508,6 +531,11 @@ uint32_t get_new_pid()
     /* Current number of running process exceeds */
     printf("Current number of running process exceeds!\n");
     return -1;
+}
+
+inline pcb_t* get_pcb_ptr(uint32_t pid)
+{
+    return (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
 }
 
 /*

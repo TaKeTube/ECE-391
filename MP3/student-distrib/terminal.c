@@ -5,7 +5,102 @@
 
 #include "terminal.h"
 #include "keyboard.h"
+#include "syscall.h"
 #include "lib.h"
+
+#define CHECK_FAIL_RETURN(value)        \
+if(value == -1){                        \
+        sti();                          \
+        return -1;                      \
+}                                       \
+
+uint32_t curr_buf_offset;
+
+int32_t terminal_init()
+{
+    int i;
+    int j;
+    for(i = 0; i < TERMINAL_NUM; i++){
+        /* set basic attribute */
+        terminals[i].id = i;
+        terminals[i].is_running = 0;
+        terminals[i].curr_pid = -1;
+        terminals[i].cursor_x = 0;
+        terminals[i].cursor_y = 0;
+        terminals[i].term_buf_offset = 0;
+        /* init terminal buffer */
+        for(j = 0; i < MAX_TERMINAL_BUF_SIZE; j++)
+            terminals[i].term_buf[j] = '\0';
+        /* init video buffer */
+        for (i = 0; i < VIDBUF_SIZE; i++){
+            *(uint8_t *)(terminals[i].vid_buf + (i << 1)) = ' ';
+            *(uint8_t *)(terminals[i].vid_buf + (i << 1) + 1) = ATTRIB;
+        }
+    }
+}
+
+int32_t terminal_switch(uint32_t term_id)
+{
+    cli();
+    /* if it is the current terminal, do nothing */
+    if(curr_term_id == term_id){
+        sti();
+        return 0;
+    }
+    /* save terminal info */
+    CHECK_FAIL_RETURN(terminal_save(curr_term_id));
+    /* restore terminal info */
+    CHECK_FAIL_RETURN(terminal_restore(term_id));
+    /* check whether the terminal is runnning */
+    if(terminals[curr_term_id].is_running){
+        /* remap the virtual video memory because terminal changes */
+        uint32_t curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;
+        if(curr_process_term_id != curr_term_id){
+            /* if the current process is executed by current terminal, remap virtual vidmem to physical vidmem */
+            CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
+        }else{
+            /* if not, remap virtual to current process's terminal's video buffer */
+            CHECK_FAIL_RETURN(vid_remap(terminals[curr_process_term_id].vid_buf));
+        }
+        sti();
+    }else{
+        /* if it is the new terminal, run shell for this terminal */
+        sti();
+        execute((uint8_t*)"shell");
+    }
+    return 0;
+}
+
+int32_t terminal_save(uint32_t term_id)
+{
+    /* sanity check */
+    if(term_id >= TERMINAL_NUM) 
+        return -1;
+    /* save current terminal buffer offset */
+    terminals[term_id].term_buf_offset = curr_buf_offset;
+    /* save current cursor position */
+    terminals[term_id].cursor_x = get_screen_x();
+    terminals[term_id].cursor_y = get_screen_y();
+    /* save video memory */
+    memcpy((uint8_t *)terminals[term_id].vid_buf, (uint8_t *)VIDEO, VIDBUF_SIZE);
+    return 0;
+}
+
+int32_t terminal_restore(uint32_t term_id)
+{
+    /* sanity check */
+    if(term_id >= TERMINAL_NUM) 
+        return -1;
+    /* set current terminal id */
+    curr_term_id = term_id;
+    /* restore current terminal buffer offset */
+    curr_buf_offset = terminals[term_id].term_buf_offset;
+    /* restore current cursor position */
+    set_screen_xy(terminals[term_id].cursor_x, terminals[term_id].cursor_y);
+    /* restore video memory */
+    memcpy((uint8_t *)VIDEO, (uint8_t *)terminals[term_id].vid_buf, VIDBUF_SIZE);
+    return 0;
+}
 
 
 /*

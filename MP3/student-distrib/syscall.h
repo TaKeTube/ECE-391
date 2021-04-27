@@ -22,8 +22,9 @@
 #define ADDR_140MB              0x08c00000  /* 140MB */
 #define ADDR_128MB              0x08000000
 #define ADDR_132MB              0x08400000
-#define VIDEO_ADDR              0xB8000
-#define VIDMAP_OFFSET           35          /* 140/4 */
+#define VID_PHYS_ADDR           0xB8000
+#define VID_VIRTUAL_ADDR        ADDR_140MB
+#define VIDMAP_OFFSET           VID_VIRTUAL_ADDR/PAGE_4MB_SIZE          /* 140/4 */
 #define PROGRAM_VIRTUAL_ADDR    0x8048000
 #define PROGRAM_START_OFFSET    24
 #define PROGRAM_START_ADDR      (PROGRAM_VIRTUAL_ADDR + PROGRAM_START_OFFSET)
@@ -56,6 +57,8 @@ typedef struct pcb_t {
     /* process id */
     uint32_t pid;
     uint32_t parent_pid;
+    /* terminal id */
+    uint32_t term_id;
     /* arguments for this process */
     uint8_t arg[MAX_ARG_LEN];
     /* used for context switch */
@@ -63,6 +66,9 @@ typedef struct pcb_t {
     uint32_t parent_esp;
     uint32_t parent_esp0;
 } pcb_t;
+
+/* current process id */
+uint32_t curr_pid;
 
 /* pointer pointing to current fd array */
 file_desc_t* cur_fd_array;
@@ -87,13 +93,17 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes);
 int32_t write(int32_t fd, void* buf, int32_t nbytes);
 
 /* not finised yet */
-int32_t getargs(uint8_t* buf, int32_t nbytes);
+int32_t getargs(uint8_t *buf, int32_t nbytes);
 
 /* not finished yet */
-int32_t vidmap();
+int32_t vidmap(uint8_t** screen_start);
+
+int32_t vid_remap(uint8_t* phys_addr);
 
 /* get new process id by finding unoccupied position of pid_array */
 uint32_t get_new_pid();
+
+pcb_t* get_pcb_ptr(uint32_t pid);
 
 /* initialize file operation table array */
 void file_op_table_init();

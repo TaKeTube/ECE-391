@@ -8,6 +8,10 @@
 #include "types.h"
 
 #define VIDEO       0xB8000
+#define NUM_COLS    80
+#define NUM_ROWS    25
+#define ATTRIB      0x7
+#define VIDBUF_SIZE 2*NUM_COLS*NUM_ROWS
 
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
@@ -25,6 +29,9 @@ extern void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
 extern void disable_cursor();
 extern void update_cursor(int x, int y);
 extern uint16_t get_cursor_position(void);
+int get_screen_x();
+int get_screen_y();
+void set_screen_xy(int x, int y);
 
 void* memset(void* s, int32_t c, uint32_t n);
 void* memset_word(void* s, int32_t c, uint32_t n);
