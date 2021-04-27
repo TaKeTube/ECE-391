@@ -42,6 +42,7 @@ void idt_init(){
     set_intr_gate(0x12, exc_machine_check);
     set_intr_gate(0x13, exc_simd_floating_point);
     // Interrupt
+    set_intr_gate(0x20, int_pit);
     set_intr_gate(0x21, int_keyboard);
     set_intr_gate(0x28, int_rtc);
     // System Call

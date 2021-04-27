@@ -20,8 +20,9 @@
 #define MAX_MASTER_IRQ_NUM  8
 
 /* IR for devices*/
-#define SLAVE_IRQ 2
-#define RTC_IRQ  8
+#define SLAVE_IRQ   2
+#define RTC_IRQ     8
+#define PIT_IRQ     0
 
 /* Initialization control words to init each PIC.
  * See the Intel manuals for details on the meaning

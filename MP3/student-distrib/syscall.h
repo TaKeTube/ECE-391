@@ -62,6 +62,8 @@ typedef struct pcb_t {
     /* arguments for this process */
     uint8_t arg[MAX_ARG_LEN];
     /* used for context switch */
+    uint32_t ebp;
+    uint32_t esp;
     uint32_t parent_ebp;
     uint32_t parent_esp;
     uint32_t parent_esp0;

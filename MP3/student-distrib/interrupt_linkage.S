@@ -43,3 +43,10 @@ int_keyboard:
     popall
     iret
 
+/* PIT interrupt linkage code */
+.global int_pit
+int_keyboard:
+    pushall
+    call    pit_handler
+    popall
+    iret

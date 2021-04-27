@@ -55,7 +55,7 @@ int32_t terminal_switch(uint32_t term_id)
     if(terminals[curr_term_id].is_running){
         /* remap the virtual video memory because terminal changes */
         uint32_t curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;
-        if(curr_process_term_id != curr_term_id){
+        if(curr_process_term_id == curr_term_id){
             /* if the current process is executed by current terminal, remap virtual vidmem to physical vidmem */
             CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
         }else{
