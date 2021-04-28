@@ -10,8 +10,6 @@
 static file_op_table_t file_op_table_arr[FILE_TYPE_NUM];
 /* process id array */
 static uint32_t pid_array[NUM_PROCESS] = {0};
-uint32_t pid = 0;
-uint32_t parent_pid = 0;
 
 /*
  * halt
@@ -25,16 +23,19 @@ int32_t halt(uint8_t status)
 {
     int fd;                             /* file descriptor array index */
     uint16_t retval;                    /* return value */
-    pcb_t *pcb_ptr, *parent_pcb_ptr;    /* pcb pointer */
+    pcb_t *curr_pcb, *parent_pcb;    /* pcb pointer */
+
+    /* forbid interrupt */
+    cli();
 
     /* get current pcb */
-    pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
+    curr_pcb = get_pcb_ptr(curr_pid);
 
     /* clear pid */
-    pid_array[pcb_ptr->pid] = 0;
+    pid_array[curr_pcb->pid] = 0;
 
     /* get parent pcb */
-    parent_pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*((pcb_ptr->parent_pid)+1));
+    parent_pcb = get_pcb_ptr(curr_pcb->parent_pid);
 
     /* clear fd array, close any relevant files */
     for(fd = FDA_FILE_START_IDX; fd < MAX_FILE_NUM; fd++){
@@ -49,30 +50,39 @@ int32_t halt(uint8_t status)
     cur_fd_array[0].flags = FD_FLAG_FREE;
 
     /* restore parent fd array */
-    cur_fd_array = parent_pcb_ptr->fd_array;
+    cur_fd_array = parent_pcb->fd_array;
 
     /* restore parent paging */
-    set_paging(parent_pcb_ptr->pid);
+    set_paging(parent_pcb->pid);
 
     /* restore tss data */
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KS_BASE_ADDR - KS_SIZE*parent_pcb_ptr->pid - sizeof(int32_t);
+    tss.esp0 = KS_BASE_ADDR - KS_SIZE*parent_pcb->pid - sizeof(int32_t);
+
+    /* update terminal info */
+    terminals[curr_term_id].pnum--;
 
     /* if it is the base shell, restart it */
-    if((pid == 0) && (pid == parent_pid)){
+    if(curr_pcb->parent_pid == NO_PARENT_PID){
         clear();
+        sti();
         execute((uint8_t*)"shell");
     }
 
     /* update pid */
-    pid = parent_pcb_ptr->pid;
-    parent_pid = parent_pcb_ptr->parent_pid;
+    curr_pid = parent_pcb->pid;
+
+    /* update terminal info */
+    terminals[curr_term_id].curr_pid = curr_pid;
 
     /* decide return value according to the halt status */
     retval = (status == HALT_EXCEPTION) ? HALT_EXCEPTION_RETVAL : (uint16_t)status;
 
     /* add an line break to fix a small deficiency of the shell program */
     putc('\n');
+
+    /* enable interrupt */
+    sti();
 
     /* halt */
     asm volatile("              \n\
@@ -84,7 +94,7 @@ int32_t halt(uint8_t status)
         ret                     \n\
         "
         : 
-        : "r" (pcb_ptr->parent_esp), "r"(pcb_ptr->parent_ebp), "r"(retval)
+        : "r" (curr_pcb->parent_esp), "r"(curr_pcb->parent_ebp), "r"(retval)
         : "esp", "ebp", "eax"
     );
 
@@ -117,9 +127,9 @@ int32_t execute(const uint8_t *cmd)
     /* new process id */
     uint32_t new_pid;
     /* pcb pointer */
-    pcb_t* pcb_ptr;
+    pcb_t* new_pcb;
     /* EIP and ESP setting */
-    uint32_t user_eip, user_esp;
+    uint32_t new_eip, new_esp;
 
     /* forbid interrupt */
     cli();
@@ -193,8 +203,7 @@ int32_t execute(const uint8_t *cmd)
     /* get new process id */
     if ((new_pid = get_new_pid()) != -1)
     {
-        pid = new_pid;
-        set_paging(pid); 
+        set_paging(new_pid);
     }else{
         /* Current number of running process exceeds */
         sti();
@@ -229,61 +238,69 @@ int32_t execute(const uint8_t *cmd)
      */
 
     /* get new pcb address */
-    pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
+    new_pcb = get_pcb_ptr(new_pid);
     /* set process id */
-    pcb_ptr->pid = pid;
-    
-    /* set parent process id */
-    if(!pid)
+    new_pcb->pid = new_pid;
+    /* set parent process id and terminal id */
+    if(terminals[curr_term_id].pnum == 0){
         /* if it is the base shell */
-        pcb_ptr->parent_pid = pid;
-    else
-        pcb_ptr->parent_pid = parent_pid;
-    parent_pid = pid;
+        new_pcb->parent_pid = NO_PARENT_PID;
+        new_pcb->term_id = curr_term_id;
+    }else{
+        new_pcb->parent_pid = curr_pid;
+        new_pcb->term_id = get_pcb_ptr(curr_pid)->term_id;
+    }
     
     /* initialize the fd_array */
     /* init all file descriptor */
     for (i = 0; i < MAX_FILE_NUM; i++)
     {
-        pcb_ptr->fd_array[i].op = NULL;
-        pcb_ptr->fd_array[i].inode_idx = -1;
-        pcb_ptr->fd_array[i].file_offset = 0;
-        pcb_ptr->fd_array[i].flags = FD_FLAG_FREE;
+        new_pcb->fd_array[i].op = NULL;
+        new_pcb->fd_array[i].inode_idx = -1;
+        new_pcb->fd_array[i].file_offset = 0;
+        new_pcb->fd_array[i].flags = FD_FLAG_FREE;
     }
 
     /* init stdin */
-    pcb_ptr->fd_array[0].op = &file_op_table_arr[STD_TYPE];
-    pcb_ptr->fd_array[0].flags = FD_FLAG_BUSY;
+    new_pcb->fd_array[0].op = &file_op_table_arr[STD_TYPE];
+    new_pcb->fd_array[0].flags = FD_FLAG_BUSY;
 
     /* init stdout */
-    pcb_ptr->fd_array[1].op = &file_op_table_arr[STD_TYPE];
-    pcb_ptr->fd_array[1].flags = FD_FLAG_BUSY;
+    new_pcb->fd_array[1].op = &file_op_table_arr[STD_TYPE];
+    new_pcb->fd_array[1].flags = FD_FLAG_BUSY;
 
     /* set current fd array */
-    cur_fd_array = pcb_ptr->fd_array;
+    cur_fd_array = new_pcb->fd_array;
 
     /* set argument */
-    strncpy((int8_t*)pcb_ptr->arg,(int8_t*)argument, MAX_ARG_LEN);
+    strncpy((int8_t*)new_pcb->arg,(int8_t*)argument, MAX_ARG_LEN);
 
     /* set tss */
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KS_BASE_ADDR - KS_SIZE * pid - sizeof(int32_t);
+    tss.esp0 = KS_BASE_ADDR - KS_SIZE * new_pid - sizeof(int32_t);
+
+    /* update current pid */
+    curr_pid = new_pid;
+
+    /* update terminal info */
+    terminals[curr_term_id].curr_pid = curr_pid;
+    terminals[curr_term_id].pnum++;
 
     /* store esp and ebp */
     asm volatile("                                \n\
         movl %%ebp, %0                            \n\
         movl %%esp, %1                            \n\
         "
-        : "=r"(pcb_ptr->parent_ebp), "=r"(pcb_ptr->parent_esp)
+        : "=r"(new_pcb->parent_ebp), "=r"(new_pcb->parent_esp)
     );
 
     /* ================================ *
-     * 6.context switch to user progeam *
+     * 6.context switch to user program *
      * ================================ */
 
     /* set the address of the first instruction */
-    user_eip = *(int32_t*)PROGRAM_START_ADDR;
-    user_esp = USER_STACK_ADDR;
+    new_eip = *(int32_t*)PROGRAM_START_ADDR;
+    new_esp = USER_STACK_ADDR;
 
     /* enable interrupt */
     sti();
@@ -302,7 +319,7 @@ int32_t execute(const uint8_t *cmd)
         iret                                                       \n\
         "
         :
-        : "a"(user_eip), "b"(user_esp), "c"(USER_DS), "d"(USER_CS)
+        : "a"(new_eip), "b"(new_esp), "c"(USER_DS), "d"(USER_CS)
         : "memory"
     );
 
@@ -434,7 +451,7 @@ int32_t getargs(uint8_t *buf, int32_t nbytes)
 {
     /* get current pcb */
     pcb_t* pcb_ptr;
-    pcb_ptr = (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
+    pcb_ptr = get_pcb_ptr(curr_pid);
 
     /* sanity check */
     if (buf == NULL || pcb_ptr->arg[0] == '\0')

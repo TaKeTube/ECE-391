@@ -25,9 +25,13 @@ int32_t terminal_init()
         terminals[i].id = i;
         terminals[i].is_running = 0;
         terminals[i].curr_pid = -1;
+        terminals[i].pnum = 0;
         terminals[i].cursor_x = 0;
         terminals[i].cursor_y = 0;
         terminals[i].term_buf_offset = 0;
+        terminals[i].vid_buf = (uint8_t *)(VIDEO+(i+1)*PAGE_4KB_SIZE);
+        /* init page for video buffer */
+        
         /* init terminal buffer */
         for(j = 0; i < MAX_TERMINAL_BUF_SIZE; j++)
             terminals[i].term_buf[j] = '\0';
@@ -65,6 +69,9 @@ int32_t terminal_switch(uint32_t term_id)
         sti();
     }else{
         /* if it is the new terminal, run shell for this terminal */
+        /* switch current process to the shell belongs to new terminal regardless of scheduler */
+        terminals[curr_term_id].is_running = 1;
+        CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
         sti();
         execute((uint8_t*)"shell");
     }
@@ -102,6 +109,16 @@ int32_t terminal_restore(uint32_t term_id)
     return 0;
 }
 
+int32_t launch_first_terminal(){
+    /* get init terminal info */
+    CHECK_FAIL_RETURN(terminal_restore(FIRST_TERMINAL_ID));
+    terminals[FIRST_TERMINAL_ID].is_running = 1;
+    CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
+    sti();
+    execute((uint8_t*)"shell");
+    /* never reach here */
+    return 0;
+}
 
 /*
 *	terminal_open

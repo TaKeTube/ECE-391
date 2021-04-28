@@ -12,11 +12,15 @@
 #define NUM_PD_ENTRY        1024
 /* the number of paging table entries */
 #define NUM_PT_ENTRY        1024
-/* the size of a 4kB page (number of bytes) */
-#define PAGE_SIZE           4096
+/* the size of different types of page (number of bytes) */
+#define PAGE_4KB_SIZE       4096
+#define PAGE_4MB_SIZE       0x400000
 /* 12bits offset in virtual memory as index in a 4kB-page */
 #define MEM_OFFSET_BITS     12
-#define VIDMAP_OFFSET       35
+#define VID_PHYS_ADDR       0xB8000
+#define VID_VIRTUAL_ADDR    ADDR_140MB
+#define VIDMAP_OFFSET       VID_VIRTUAL_ADDR/PAGE_4MB_SIZE          /* 140/4 */
+// #define VIDMAP_OFFSET       35
 
 
 /* struct for page directory entry */
@@ -52,10 +56,10 @@ typedef struct page_table_entry
 } page_table_entry_t;
 
 /* page directory, 4096 aligned */
-page_dir_entry_t page_directory[NUM_PD_ENTRY] __attribute__((aligned(PAGE_SIZE)));
+page_dir_entry_t page_directory[NUM_PD_ENTRY] __attribute__((aligned(PAGE_4KB_SIZE)));
 /* page table, 4096 aligned */
-page_table_entry_t page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_SIZE)));
-page_table_entry_t vid_page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_SIZE)));
+page_table_entry_t page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_4KB_SIZE)));
+page_table_entry_t vid_page_table[NUM_PT_ENTRY] __attribute__((aligned(PAGE_4KB_SIZE)));
 
 /* init paging */
 void paging_init();

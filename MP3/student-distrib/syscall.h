@@ -3,11 +3,13 @@
 
 #include "types.h"
 #include "filesys.h"
+#include "paging.h"
 
 #define MAX_CMD_LEN             128
 #define MAX_ARG_LEN             128
 #define NUM_PROCESS             6
 #define CHECK_BUFFER_SIZE       4
+#define NO_PARENT_PID           NUM_PROCESS
 /* file descriptor related */
 #define MAX_FILE_NUM            8
 #define FDA_FILE_START_IDX      2
@@ -22,13 +24,9 @@
 #define ADDR_140MB              0x08c00000  /* 140MB */
 #define ADDR_128MB              0x08000000
 #define ADDR_132MB              0x08400000
-#define VID_PHYS_ADDR           0xB8000
-#define VID_VIRTUAL_ADDR        ADDR_140MB
-#define VIDMAP_OFFSET           VID_VIRTUAL_ADDR/PAGE_4MB_SIZE          /* 140/4 */
 #define PROGRAM_VIRTUAL_ADDR    0x8048000
 #define PROGRAM_START_OFFSET    24
 #define PROGRAM_START_ADDR      (PROGRAM_VIRTUAL_ADDR + PROGRAM_START_OFFSET)
-#define PAGE_4MB_SIZE           0x400000
 /* sizeof(int32_t) here is because we need to points to the least position of the user stack, not the bottom */
 #define USER_STACK_ADDR         (USER_MEM_ADDR + PAGE_4MB_SIZE - sizeof(int32_t))
 /* halt status code */
@@ -66,7 +64,6 @@ typedef struct pcb_t {
     uint32_t esp;
     uint32_t parent_ebp;
     uint32_t parent_esp;
-    uint32_t parent_esp0;
 } pcb_t;
 
 /* current process id */

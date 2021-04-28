@@ -14,6 +14,7 @@
 #include "paging.h"
 #include "filesys.h"
 #include "syscall.h"
+#include "terminal.h"
 
 #define RUN_TESTS   0
 
@@ -162,12 +163,17 @@ void entry(unsigned long magic, unsigned long addr) {
     rtc_init();
     /* init keyboard */
     keyboard_init();
+    /* init PIT */
+    pit_init()
 
     /* init file system */
     filesys_init((void*)filesys_start_addr);
 
     /* init file operation table */
     file_op_table_init();
+
+    /* init multi-terminals */
+    terminal_init()
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
@@ -184,7 +190,9 @@ void entry(unsigned long magic, unsigned long addr) {
     launch_tests();
 #else
     /* Execute the first program ("shell") ... */
-    execute((uint8_t*)"shell");
+    // execute((uint8_t*)"shell");
+    if(launch_first_terminal() == -1)
+        printf("\n fail to launch first terminal.\n");
 #endif
 
     /* Spin (nicely, so we don't chew up cycles) */

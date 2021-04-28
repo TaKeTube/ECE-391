@@ -9,12 +9,14 @@
 
 #define MAX_TERMINAL_BUF_SIZE   128
 #define TERMINAL_NUM            3
+#define FIRST_TERMINAL_ID       0
 
 typedef struct terminal_t{
 
     uint32_t id;
     uint32_t is_running;
     uint32_t curr_pid;
+    uint32_t pnum;      /* number of process running in this terminal */
     uint32_t cursor_x;
     uint32_t cursor_y;
     volatile uint8_t term_buf[MAX_TERMINAL_BUF_SIZE];
@@ -34,6 +36,8 @@ int32_t terminal_switch(uint32_t term_id);
 int32_t terminal_save(uint32_t term_id);
 
 int32_t terminal_restore();
+
+int32_t launch_first_terminal();
 
 /* open a terminal */
 int32_t terminal_open(const char* filename);
