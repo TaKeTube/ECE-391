@@ -1,6 +1,7 @@
 #include "keyboard.h"
 #include "lib.h"
 #include "i8259.h"
+#include "terminal.h"
 
 
 
@@ -10,7 +11,7 @@ static unsigned char ctrl_state = 0;
 static unsigned char alt_state = 0;
 
 // volatile unsigned char read_buffer[READ_BUFFER_SIZE];
-volatile int read_buffer_ptr = 0;
+// volatile int read_buffer_ptr = 0;
 
 // array for basic key inputs
 unsigned char key_table[4][KEY_NUM] = {
@@ -45,7 +46,6 @@ unsigned char key_table[4][KEY_NUM] = {
 */
 void keyboard_init(){
     enable_irq(KEYBOARD_IRQ);
-	is_ready = 0;
 }
 
 /*
@@ -60,6 +60,9 @@ void keyboard_handler(){
     int i;                          /* loop index for tab */
     // mask interrupt
     cli();
+
+    terminal_t* curr_term = &terminals[curr_term_id];
+    volatile uint8_t* read_buffer = curr_term->term_buf;
 
     // wait for interrupt
     while(1){
@@ -98,23 +101,23 @@ void keyboard_handler(){
             alt_state = 0;
             break;
         case ENTER:
-            read_buffer[read_buffer_ptr] = '\n';
-            read_buffer_ptr += 1;
+            read_buffer[curr_term->term_buf_offset] = '\n';
+            curr_term->term_buf_offset += 1;
             /* if enter is pressed, set flag is_ready to tell the terminal ready to read */
-            is_ready = 1;
+            terminals[curr_term_id].is_enter = 1;
             newline();
             break;
         case BACKSPACE:
-            if (read_buffer_ptr>0){
-                read_buffer_ptr -= 1;
-                read_buffer[read_buffer_ptr] = '\0';
+            if (curr_term->term_buf_offset>0){
+                curr_term->term_buf_offset -= 1;
+                read_buffer[curr_term->term_buf_offset] = '\0';
                 delc();
             }
             break;
         case TAB:
             for (i=0; i<4; i++){
-                read_buffer[read_buffer_ptr] = ' ';
-                read_buffer_ptr += 1;
+                read_buffer[curr_term->term_buf_offset] = ' ';
+                curr_term->term_buf_offset += 1;
                 putc(' '); 
             }
             break;
@@ -138,6 +141,9 @@ void keyboard_handler(){
 void print_key(unsigned char scancode){
     unsigned char key;  /* corresponding key value */
     
+    terminal_t* curr_term = &terminals[curr_term_id];
+    volatile uint8_t* read_buffer = curr_term->term_buf;
+
     // select different key modes based on shift and cpas state
     if (scancode >= KEY_NUM)
         return;
@@ -160,6 +166,21 @@ void print_key(unsigned char scancode){
         // is_ready = 1;
         return;
     }
+    // for alt+Fkeys, switch the terminal
+    else if (alt_state){
+        if (key == F1){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(0);
+        }
+        else if (key == F2){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(1);
+        }
+        else if (key == F3){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(2);
+        }
+    }
     // for ctrl+L, we clear the screen
     else if (ctrl_state){
         if (key == 'l' || key == 'L'){
@@ -172,9 +193,9 @@ void print_key(unsigned char scancode){
             return;
     }
     // print the correct key
-    else if (read_buffer_ptr < READ_BUFFER_SIZE){
-        read_buffer[read_buffer_ptr] = key;
-        read_buffer_ptr += 1;
+    else if (curr_term->term_buf_offset < READ_BUFFER_SIZE){
+        read_buffer[curr_term->term_buf_offset] = key;
+        curr_term->term_buf_offset += 1;
         putc(key);
     }
     // else
@@ -191,11 +212,13 @@ void print_key(unsigned char scancode){
 */
 void clr_read_buffer(){
     int i;  /* loop index for clearing read buffer */
+    terminal_t* curr_term = &terminals[curr_term_id];
+    volatile uint8_t* read_buffer = curr_term->term_buf;
     for (i=0; i<READ_BUFFER_SIZE; i++)
         read_buffer[i] = 0;
-    read_buffer_ptr = 0;
+    curr_term->term_buf_offset = 0;
     /* clear is_ready */
-	is_ready = 0;
+	terminals[curr_term_id].is_enter = 0;
     return;
 }
 

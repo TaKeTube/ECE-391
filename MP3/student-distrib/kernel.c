@@ -15,6 +15,7 @@
 #include "filesys.h"
 #include "syscall.h"
 #include "terminal.h"
+#include "schedule.h"
 
 #define RUN_TESTS   0
 
@@ -149,6 +150,9 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
+    /* prevent scheduling when first shell has not been executed */
+    curr_pid = -1;
+
     /* init IDT */
     idt_init();
     /* init paging */
@@ -164,7 +168,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* init keyboard */
     keyboard_init();
     /* init PIT */
-    pit_init()
+    pit_init();
 
     /* init file system */
     filesys_init((void*)filesys_start_addr);
@@ -173,7 +177,7 @@ void entry(unsigned long magic, unsigned long addr) {
     file_op_table_init();
 
     /* init multi-terminals */
-    terminal_init()
+    terminal_init();
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your

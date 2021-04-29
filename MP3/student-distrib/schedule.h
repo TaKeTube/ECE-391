@@ -5,10 +5,10 @@
 
 #define PIT_CMD_PORT        0x43
 #define PIT_CHANNEL_0       0x40
-#define PIT_BINARY_MODE     0b0         /* 16-bit binary                    */
-#define PIT_OP_MODE         0b011       /* Mode 3 (square wave generator)   */
-#define PIT_AC_MODE         0b11        /* lobyte / hibyte                  */
-#define PIT_CHANNEL         0b00        /* Channel 0                        */
+#define PIT_BINARY_MODE     0           /* 0b0      16-bit binary                    */
+#define PIT_OP_MODE         3           /* 0b011    Mode 3 (square wave generator)   */
+#define PIT_AC_MODE         3           /* 0b11     lobyte / hibyte                  */
+#define PIT_CHANNEL         0           /* 0b00     Channel 0                        */
 #define PIT_CMD             ((PIT_CHANNEL << 6) | (PIT_AC_MODE << 4) | (PIT_OP_MODE << 1) | (PIT_BINARY_MODE))
 #define PIT_FREQ            100         /* PIT frequency in Hz              */
 #define PIT_MAX_FREQ        1193180     /* PIT max freqncy in Hz            */
@@ -20,6 +20,6 @@ extern void pit_init();
 
 extern void pit_handler();
 
-extern void process_switch();
+void scheduler();
 
 #endif

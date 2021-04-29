@@ -102,7 +102,7 @@ int32_t vid_remap(uint8_t* phys_addr);
 /* get new process id by finding unoccupied position of pid_array */
 uint32_t get_new_pid();
 
-pcb_t* get_pcb_ptr(uint32_t pid);
+inline pcb_t* get_pcb_ptr(uint32_t pid);
 
 /* initialize file operation table array */
 void file_op_table_init();

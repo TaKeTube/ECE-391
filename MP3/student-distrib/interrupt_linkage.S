@@ -45,7 +45,7 @@ int_keyboard:
 
 /* PIT interrupt linkage code */
 .global int_pit
-int_keyboard:
+int_pit:
     pushall
     call    pit_handler
     popall

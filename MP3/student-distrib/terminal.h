@@ -19,6 +19,7 @@ typedef struct terminal_t{
     uint32_t pnum;      /* number of process running in this terminal */
     uint32_t cursor_x;
     uint32_t cursor_y;
+    volatile uint32_t is_enter;
     volatile uint8_t term_buf[MAX_TERMINAL_BUF_SIZE];
     volatile uint8_t term_buf_offset;
     uint8_t *vid_buf;

@@ -17,8 +17,8 @@ static int32_t rtc_inter_status; // used to record whether new interrupt happens
 int32_t rtc_init()
 {
     uint8_t prev;
-    /* disable all interrupts, including the NMI */
-    cli();
+    // /* disable all interrupts, including the NMI */
+    // cli();
     /* disable NMI*/
     prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
@@ -44,8 +44,8 @@ int32_t rtc_init()
     /* enable NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
     outb(prev, RTC_PORT);
-    /* enable all interrupt */
-    sti();
+    // /* enable all interrupt */
+    // sti();
 
     return 0;
 }
@@ -73,8 +73,8 @@ int32_t rtc_set_fre(int32_t fre)
         log += 1;
     /* get the corresponding rate due to the table 3*/
     rate = 16 - log; //16 is the number of bit patterns in Register A0,A1,A2,A3 due to table 3
-    /* disable all interrupts, including the NMI */
-    cli();
+    // /* disable all interrupts, including the NMI */
+    // cli();
     /* disable NMI*/
     prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
@@ -88,8 +88,8 @@ int32_t rtc_set_fre(int32_t fre)
     /* enable the NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
     outb(prev, RTC_PORT);
-    /* enable all interrupts*/
-    sti();
+    // /* enable all interrupts*/
+    // sti();
     return 0;
 }
 

@@ -17,12 +17,14 @@
 #define CTRL_UP		        0x9D
 #define ALT_DOWN	        0x38
 #define ALT_UP		        0xB8
-
+#define F1          		0x3B
+#define F2          		0x3C
+#define F3          		0x3D
 
 /* keyboard read buffer */
-volatile unsigned char read_buffer[READ_BUFFER_SIZE];
+// volatile unsigned char read_buffer[READ_BUFFER_SIZE];
 /* a flag to communicate between keyboard and terminal, 1 means a terminal_read is ready to perform */
-volatile int is_ready;
+// volatile int is_ready;
 
 
 /* init the keyboard by enabling the corresponding irq line */

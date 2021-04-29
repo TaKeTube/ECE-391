@@ -27,19 +27,27 @@ void pit_handler()
 void scheduler()
 {
     int i;
-    pcb_t* curr_pcb = get_pcb_ptr(curr_pid);
+    pcb_t* curr_pcb;
     pcb_t* next_pcb;
-    uint32_t next_term_id = 0;
-    uint32_t curr_process_term_id = curr_pcb->term_id;
+    uint32_t curr_process_term_id;
+    uint32_t next_term_id;
     uint32_t next_pid;
+
+    if(curr_pid == -1)
+        return;
+
+    curr_pcb = get_pcb_ptr(curr_pid);
+    curr_process_term_id = curr_pcb->term_id;
+    next_term_id = (curr_process_term_id + 1)%TERMINAL_NUM;
+
 
     /* get next process's terminal's id */
     for(i = 0; i < TERMINAL_NUM && !terminals[next_term_id].is_running; i++)
-        next_term_id = (curr_process_term_id + i)%TERMINAL_NUM;
+        next_term_id = (next_term_id + 1)%TERMINAL_NUM;
     
     /* if process does not change, which means there is only one process running, just return */
     if(next_term_id == curr_process_term_id)
-        return 0;
+        return;
 
     /* get next process's id */
     next_pid = terminals[next_term_id].curr_pid;

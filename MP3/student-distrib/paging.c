@@ -82,7 +82,7 @@ void page_table_init()
     {
         page_table[i].p = 0;        // Present
         page_table[i].r_w = 1;      // Read/write permission, always 1
-        page_table[i].u_s = 0;      // User/supervisor
+        page_table[i].u_s = 1;      // User/supervisor
         page_table[i].pwt = 0;      // Page write-through, always 0
         page_table[i].pcd = 0;      // Page cache disabled
         page_table[i].a = 0;        // Accessed, won't use, does not matter

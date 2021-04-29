@@ -42,6 +42,13 @@ int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n);
 int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
+int32_t terminal_printf(int8_t *format, ...);
+int32_t terminal_puts(int8_t* s);
+void terminal_putc(uint8_t c);
+void terminal_delc();
+void terminal_newline();
+void terminal_scroll_up();
+
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);
 int32_t safe_strncpy(int8_t* dest, const int8_t* src, int32_t n);
