@@ -4,13 +4,16 @@
 #include "x86_desc.h"
 #include "lib.h"
 
+/* https://wiki.osdev.org/Programmable_Interval_Timer */
 void pit_init()
 {
-    // outb(PIT_MODE,PIT_CMD_PORT);
-    // /*sent low 8 bits of divisor*/
-    // outb((uint8_t)PIT_FREQ_DIVISOR && 0xff, PIT_DATA_PORT);
-    // /*sent high 8 bits of divisor*/
-    // outb((uint8_t)(PIT_FREQ_DIVISOR >> 8),PIT_DATA_PORT);
+    /* sent command to pit */
+    outb(PIT_CMD, PIT_CMD_PORT);
+    /*sent least significant bits of period */
+    outb(PIT_LATCH && PIT_BITMASK, PIT_CHANNEL_0);
+    /*sent most significant bits of period */
+    outb(PIT_LATCH >> PIT_MSB_OFFSET, PIT_CHANNEL_0);
+    /* enable interrupt */
     enable_irq(PIT_IRQ);
     return;
 }
