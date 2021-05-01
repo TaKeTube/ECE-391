@@ -22,6 +22,7 @@ static uint32_t pid_array[NUM_PROCESS] = {0};
 int32_t halt(uint8_t status)
 {
     int fd;                             /* file descriptor array index */
+    int curr_process_term_id;
     uint16_t retval;                    /* return value */
     pcb_t *curr_pcb, *parent_pcb;    /* pcb pointer */
 
@@ -31,11 +32,14 @@ int32_t halt(uint8_t status)
     /* get current pcb */
     curr_pcb = get_pcb_ptr(curr_pid);
 
+    /* get current process' terminal id */
+    curr_process_term_id = curr_pcb->term_id;
+
     /* clear pid */
     pid_array[curr_pcb->pid] = 0;
 
     /* get parent pcb */
-    parent_pcb = get_pcb_ptr(curr_pcb->parent_pid);
+    parent_pcb = get_pcb_ptr((curr_pcb->parent_pid == NO_PARENT_PID) ? curr_pid : curr_pcb->parent_pid);
 
     /* clear fd array, close any relevant files */
     for(fd = FDA_FILE_START_IDX; fd < MAX_FILE_NUM; fd++){
@@ -60,7 +64,7 @@ int32_t halt(uint8_t status)
     tss.esp0 = KS_BASE_ADDR - KS_SIZE*parent_pcb->pid - sizeof(int32_t);
 
     /* update terminal info */
-    terminals[curr_term_id].pnum--;
+    terminals[curr_process_term_id].pnum--;
 
     /* if it is the base shell, restart it */
     if(curr_pcb->parent_pid == NO_PARENT_PID){
@@ -73,16 +77,16 @@ int32_t halt(uint8_t status)
     curr_pid = parent_pcb->pid;
 
     /* update terminal info */
-    terminals[curr_term_id].curr_pid = curr_pid;
+    terminals[curr_process_term_id].curr_pid = curr_pid;
 
     /* decide return value according to the halt status */
     retval = (status == HALT_EXCEPTION) ? HALT_EXCEPTION_RETVAL : (uint16_t)status;
 
     /* add an line break to fix a small deficiency of the shell program */
-    putc('\n');
+    terminal_putc('\n');
 
-    /* enable interrupt */
-    sti();
+    // /* enable interrupt */
+    // sti();
 
     /* halt */
     asm volatile("              \n\
@@ -90,6 +94,7 @@ int32_t halt(uint8_t status)
         movl    %1, %%ebp       \n\
         xorl    %%eax, %%eax    \n\
         movw    %2, %%ax        \n\
+        sti                     \n\
         leave                   \n\
         ret                     \n\
         "
@@ -305,8 +310,8 @@ int32_t execute(const uint8_t *cmd)
     new_eip = *(int32_t*)PROGRAM_START_ADDR;
     new_esp = USER_STACK_ADDR;
 
-    /* enable interrupt */
-    sti();
+    // /* enable interrupt */
+    // sti();
 
     /* set infomation for IRET to user program space */
     asm volatile ("                                                \n\
@@ -319,6 +324,7 @@ int32_t execute(const uint8_t *cmd)
         pushl   %%ecx                                              \n\
         pushl   %%edx                                              \n\
         pushl   %%eax                                              \n\
+        sti                                                        \n\
         iret                                                       \n\
         "
         :
