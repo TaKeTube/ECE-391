@@ -30,6 +30,8 @@ terminal_t terminals[TERMINAL_NUM];
 
 uint32_t curr_term_id;
 
+uint32_t running_term_num;
+
 int32_t terminal_init();
 
 int32_t terminal_switch(uint32_t term_id);

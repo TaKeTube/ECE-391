@@ -48,6 +48,7 @@ int32_t terminal_init()
             *(uint8_t *)(terminals[i].vid_buf + (j << 1) + 1) = ATTRIB;
         }
     }
+    running_term_num = 0;
     return 0;
 }
 
@@ -86,6 +87,7 @@ int32_t terminal_switch(uint32_t term_id)
         /* if it is the new terminal, run shell for this terminal */
         /* switch current process to the shell belongs to new terminal regardless of scheduler */
         terminals[curr_term_id].is_running = 1;
+        running_term_num++;
         CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
         execute((uint8_t *)"shell");
     }
@@ -126,6 +128,7 @@ int32_t terminal_restore(uint32_t term_id)
 int32_t launch_first_terminal(){
     /* get init terminal info */
     CHECK_FAIL_RETURN(terminal_restore(FIRST_TERMINAL_ID));
+    running_term_num = 1;
     terminals[FIRST_TERMINAL_ID].is_running = 1;
     // CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
     sti();

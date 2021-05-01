@@ -3,9 +3,11 @@
 #include "lib.h"
 #include "i8259.h"
 #include "tests.h"
+#include "terminal.h"
 
-static int32_t virt_counter; // used to serve as counter in rtc_virtread
-static int32_t rtc_inter_status; // used to record whether new interrupt happens
+// static int32_t virt_counter; // used to serve as counter in rtc_virtread
+static int32_t rtc_counter; // used to record whether new interrupt happens
+
 /*
  * rtc_init
  * DESCRIPTION: initialize the rtc.
@@ -16,6 +18,7 @@ static int32_t rtc_inter_status; // used to record whether new interrupt happens
  */
 int32_t rtc_init()
 {
+    int i;      /* loop index to init virtual rtc ratio array */
     uint8_t prev;
     /* disable NMI*/
     prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
@@ -36,8 +39,12 @@ int32_t rtc_init()
     enable_irq(SLAVE_IRQ);
 
     /* initialize the global variable */
-    virt_counter = 0;
-    rtc_inter_status = 0;
+    // virt_counter = 0;
+    rtc_counter = 0;
+
+    /* init virtual rtc ratio array */
+    for(i = 0; i < NUM_PROCESS; i++)
+        virt_rtc_ratio[i] = RTC_MAX_FRE/RTC_MAX_FRE;
 
     /* enable NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
@@ -105,7 +112,7 @@ void rtc_handler() {
     outb(RTC_REGC, RTC_PORT); // select register C
     inb(RTC_DATA); // throw the contents in register C to reset status bits in register C
 
-    rtc_inter_status++; // use this to indicate new interrupt happens
+    rtc_counter++; // use this to indicate new interrupt happens
 
     /* send EOI to indicate the handler finishes the work*/
     send_eoi(RTC_IRQ);
@@ -122,7 +129,7 @@ void rtc_handler() {
 int32_t rtc_open(const char* filename)
 {
     /* set default frequency*/
-    rtc_set_fre(2);
+    rtc_set_fre(RTC_MAX_FRE);
     /* return 0 for success*/
     return 0;
 }
@@ -138,9 +145,10 @@ int32_t rtc_open(const char* filename)
 int32_t rtc_close(int32_t fd)
 {
     /* initialize the virtread counter to 0*/
-    virt_counter = 0;
+    // virt_counter = 0;
     /* set default frequency*/
-    rtc_set_fre(2);
+    rtc_set_fre(RTC_MAX_FRE);
+    virt_rtc_ratio[curr_pid] = RTC_MAX_FRE/RTC_MAX_FRE;
     /* return 0 for success*/
     return 0;
 }
@@ -156,9 +164,18 @@ int32_t rtc_close(int32_t fd)
 int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes)
 {
     /* record the current rtc_interrupt_status */
-    int32_t current_status = rtc_inter_status;
-    /* if the status doesn't change, wait*/
-    while (current_status == rtc_inter_status);
+    int32_t current_status = rtc_counter;
+    int32_t wait_period = virt_rtc_ratio[curr_pid] / running_term_num;
+
+    if(wait_period == 0)
+        wait_period = 1;
+
+    // sti();
+    /* if the status doesn't change, wait */
+    while(current_status == rtc_counter);
+    while(rtc_counter % wait_period);
+    // cli();
+
     /* return 0 for success*/
     return 0;
 
@@ -178,14 +195,24 @@ int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes)
 
 int32_t rtc_write(int32_t fd, void* buf, int32_t nbytes)
 {
+    int32_t virt_freq;
+
     // check whether the byte numbers is 4. If not, immediately return
     if (nbytes != 4)
         return -1;
     // check whether the buff is NULL
     if ((int32_t*)buf == NULL)
         return -1;
+
+    virt_freq = *(int32_t*)buf;
+
+    if (virt_freq > RTC_MAX_FRE || virt_freq <= 0)
+        return -1;
+
+    virt_rtc_ratio[curr_pid] = RTC_MAX_FRE / virt_freq;
+
     /* now the buff has int32_t number. set it as frequency. The return value depend on the function rtc_set_fre*/
-    return rtc_set_fre(*(int32_t*)buf);
+    return 0;
 }
 
 /*
@@ -199,26 +226,26 @@ int32_t rtc_write(int32_t fd, void* buf, int32_t nbytes)
  * RETURN: 0 for success
  * SIDEAFFECTS: set RTC frequency to max frequency.
  */
-int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes)
-{
-    // check whether the byte numbers is 4. If not, immediately return
-    if (nbytes != 4)
-        return -1;
-    // check whether the buff is NULL
-    if ((int32_t*)buf == NULL)
-        return -1;
-    /* change to max frequency */
-    rtc_set_fre(RTC_MAX_FRE);
-    /* get the target proportion */
-    int32_t threshold = *(int32_t*)buf;
-    /* wait until proportion number of rtc_read called*/
-    while (virt_counter < threshold)
-    {
-        rtc_read(fd, buf, nbytes); // read once
-        virt_counter++; // increase the counter
-    }
-    /* reset the counter */
-    virt_counter = 0;
-    /* return 0 for success*/
-    return 0;
-}
+// int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes)
+// {
+//     // check whether the byte numbers is 4. If not, immediately return
+//     if (nbytes != 4)
+//         return -1;
+//     // check whether the buff is NULL
+//     if ((int32_t*)buf == NULL)
+//         return -1;
+//     /* change to max frequency */
+//     rtc_set_fre(RTC_MAX_FRE);
+//     /* get the target proportion */
+//     int32_t threshold = *(int32_t*)buf;
+//     /* wait until proportion number of rtc_read called*/
+//     while (virt_counter < threshold)
+//     {
+//         rtc_read(fd, buf, nbytes); // read once
+//         virt_counter++; // increase the counter
+//     }
+//     /* reset the counter */
+//     virt_counter = 0;
+//     /* return 0 for success*/
+//     return 0;
+// }

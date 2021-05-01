@@ -333,35 +333,35 @@ int test_rtc(){
 		rtc_read(0, (int*)0, 0);
 	}
 
-	/* Test virtualized RTC read */
-	printf("Now test virtual read...\n");
-	printf("Switch to 1024/10 = 102.4 Hz. The entire counter should last around 3 seconds\n");
-	printf("Wait for 2 seconds....\n");
-	for (i=0; i<4; i++){
-		rtc_read(0, (int*)0, 0);
-	}
+	// /* Test virtualized RTC read */
+	// printf("Now test virtual read...\n");
+	// printf("Switch to 1024/10 = 102.4 Hz. The entire counter should last around 3 seconds\n");
+	// printf("Wait for 2 seconds....\n");
+	// for (i=0; i<4; i++){
+	// 	rtc_read(0, (int*)0, 0);
+	// }
 
-	printf("virtual read start...\n");
-	freq = 10;
-	for (i=0;i<300;i++)
-	{
-		rtc_virtread(0,(void*)&freq, 4);
-	}
+	// printf("virtual read start...\n");
+	// freq = 10;
+	// for (i=0;i<300;i++)
+	// {
+	// 	rtc_virtread(0,(void*)&freq, 4);
+	// }
 	
-	printf("Now Switch to 1024/100 = 10.24 Hz. The entire counter should last around 10 seconds\n");
-	freq = 2;
-	rtc_write(0, (void*)&freq, 4);
-	printf("Wait for 2 seconds....\n");
-	for (i=0; i<4; i++){
-		rtc_read(0, (int*)0, 0);
-	}
+	// printf("Now Switch to 1024/100 = 10.24 Hz. The entire counter should last around 10 seconds\n");
+	// freq = 2;
+	// rtc_write(0, (void*)&freq, 4);
+	// printf("Wait for 2 seconds....\n");
+	// for (i=0; i<4; i++){
+	// 	rtc_read(0, (int*)0, 0);
+	// }
 	
-	printf("virtual read start...\n");
-	freq = 100;
-	for (i=0;i<100;i++)
-	{
-		rtc_virtread(0,(void*)&freq, 4);
-	}
+	// printf("virtual read start...\n");
+	// freq = 100;
+	// for (i=0;i<100;i++)
+	// {
+	// 	rtc_virtread(0,(void*)&freq, 4);
+	// }
 
 	/* end, close file */
 	rtc_close(0);

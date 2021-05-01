@@ -2,6 +2,7 @@
 #define _RTC_H
 
 #include "types.h"
+#include "syscall.h"
 
 /* ports for RTC*/
 #define RTC_PORT 0x70
@@ -15,6 +16,8 @@
 /* frequency range*/
 #define RTC_MIN_FRE 2
 #define RTC_MAX_FRE 1024
+
+int32_t virt_rtc_ratio[NUM_PROCESS];
 
 /* initialize the rtc */
 extern int32_t rtc_init();
