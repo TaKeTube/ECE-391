@@ -17,6 +17,9 @@
 #define PAGE_4MB_SIZE       0x400000
 /* 12bits offset in virtual memory as index in a 4kB-page */
 #define MEM_OFFSET_BITS     12
+#define ADDR_128MB          0x08000000
+#define ADDR_132MB          0x08400000
+#define ADDR_140MB          0x08c00000  /* 140MB */
 #define VID_PHYS_ADDR       0xB8000
 #define VID_VIRTUAL_ADDR    ADDR_140MB
 #define VIDMAP_OFFSET       VID_VIRTUAL_ADDR/PAGE_4MB_SIZE          /* 140/4 */

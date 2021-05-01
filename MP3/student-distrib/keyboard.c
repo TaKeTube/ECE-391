@@ -2,6 +2,7 @@
 #include "lib.h"
 #include "i8259.h"
 #include "terminal.h"
+#include "syscall.h"
 
 
 
@@ -58,8 +59,6 @@ void keyboard_init(){
 void keyboard_handler(){
     unsigned char scancode = 0;     /* scanned code */
     int i;                          /* loop index for tab */
-    // mask interrupt
-    cli();
 
     terminal_t* curr_term = &terminals[curr_term_id];
     volatile uint8_t* read_buffer = curr_term->term_buf;
@@ -127,8 +126,6 @@ void keyboard_handler(){
     }
     // end interrupt
     send_eoi(KEYBOARD_IRQ);
-    // enable interrupt
-    sti();
 }
 
 /*
@@ -143,6 +140,22 @@ void print_key(unsigned char scancode){
     
     terminal_t* curr_term = &terminals[curr_term_id];
     volatile uint8_t* read_buffer = curr_term->term_buf;
+
+    // for alt+Fkeys, switch the terminal
+    if(alt_state){
+        if (scancode == F1){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(0);
+        }
+        else if (scancode == F2){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(1);
+        }
+        else if (scancode == F3){
+            send_eoi(KEYBOARD_IRQ);
+            terminal_switch(2);
+        }
+    }
 
     // select different key modes based on shift and cpas state
     if (scancode >= KEY_NUM)
@@ -165,21 +178,6 @@ void print_key(unsigned char scancode){
     {
         // is_ready = 1;
         return;
-    }
-    // for alt+Fkeys, switch the terminal
-    else if (alt_state){
-        if (key == F1){
-            send_eoi(KEYBOARD_IRQ);
-            terminal_switch(0);
-        }
-        else if (key == F2){
-            send_eoi(KEYBOARD_IRQ);
-            terminal_switch(1);
-        }
-        else if (key == F3){
-            send_eoi(KEYBOARD_IRQ);
-            terminal_switch(2);
-        }
     }
     // for ctrl+L, we clear the screen
     else if (ctrl_state){
@@ -212,13 +210,14 @@ void print_key(unsigned char scancode){
 */
 void clr_read_buffer(){
     int i;  /* loop index for clearing read buffer */
-    terminal_t* curr_term = &terminals[curr_term_id];
+    int curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;
+    terminal_t* curr_term = &terminals[curr_process_term_id];
     volatile uint8_t* read_buffer = curr_term->term_buf;
     for (i=0; i<READ_BUFFER_SIZE; i++)
         read_buffer[i] = 0;
     curr_term->term_buf_offset = 0;
     /* clear is_ready */
-	terminals[curr_term_id].is_enter = 0;
+    terminals[curr_process_term_id].is_enter = 0;
     return;
 }
 

@@ -94,7 +94,7 @@ int32_t halt(uint8_t status)
         ret                     \n\
         "
         : 
-        : "r" (curr_pcb->parent_esp), "r"(curr_pcb->parent_ebp), "r"(retval)
+        : "r" (parent_pcb->esp), "r"(parent_pcb->ebp), "r"(retval)
         : "esp", "ebp", "eax"
     );
 
@@ -127,7 +127,7 @@ int32_t execute(const uint8_t *cmd)
     /* new process id */
     uint32_t new_pid;
     /* pcb pointer */
-    pcb_t* new_pcb;
+    pcb_t *curr_pcb, *new_pcb;
     /* EIP and ESP setting */
     uint32_t new_eip, new_esp;
 
@@ -237,7 +237,7 @@ int32_t execute(const uint8_t *cmd)
      *      } pcb_t; 
      */
 
-    /* get new pcb address */
+    /* get curr and new pcb address */
     new_pcb = get_pcb_ptr(new_pid);
     /* set process id */
     new_pcb->pid = new_pid;
@@ -279,20 +279,23 @@ int32_t execute(const uint8_t *cmd)
     tss.ss0 = KERNEL_DS;
     tss.esp0 = KS_BASE_ADDR - KS_SIZE * new_pid - sizeof(int32_t);
 
+    /* store esp and ebp */
+    if(curr_pid != -1){
+        curr_pcb = get_pcb_ptr(curr_pid);
+        asm volatile("                                \n\
+            movl %%ebp, %0                            \n\
+            movl %%esp, %1                            \n\
+            "
+            : "=r"(curr_pcb->ebp), "=r"(curr_pcb->esp)
+        );
+    }
+
     /* update current pid */
     curr_pid = new_pid;
 
     /* update terminal info */
     terminals[curr_term_id].curr_pid = curr_pid;
     terminals[curr_term_id].pnum++;
-
-    /* store esp and ebp */
-    asm volatile("                                \n\
-        movl %%ebp, %0                            \n\
-        movl %%esp, %1                            \n\
-        "
-        : "=r"(new_pcb->parent_ebp), "=r"(new_pcb->parent_esp)
-    );
 
     /* ================================ *
      * 6.context switch to user program *
@@ -473,7 +476,7 @@ int32_t vidmap(uint8_t** screen_start)
     if ((unsigned int)screen_start <= ADDR_128MB || (unsigned int)screen_start >= ADDR_132MB)
         return -1;
 
-    *screen_start = (uint8_t*)ADDR_140MB;
+    *screen_start = (uint8_t*)VID_VIRTUAL_ADDR;
 
     /* initialize the VIDMAP page */
     page_directory[VIDMAP_OFFSET].p           = 1;    // present
@@ -507,12 +510,12 @@ int32_t vid_remap(uint8_t* phys_addr)
     if(phys_addr == NULL)
         return -1;
 
-    uint32_t offset = ((uint32_t)phys_addr) / PAGE_4MB_SIZE;
+    // uint32_t offset = ((uint32_t)VID_VIRTUAL_ADDR) / PAGE_4MB_SIZE;
 
-    page_directory[offset].p           = 1;    // present
-    page_directory[offset].r_w         = 1;
-    page_directory[offset].u_s         = 1;    // user mode
-    page_directory[offset].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
+    page_directory[VIDMAP_OFFSET].p           = 1;    // present
+    page_directory[VIDMAP_OFFSET].r_w         = 1;
+    page_directory[VIDMAP_OFFSET].u_s         = 1;    // user mode
+    page_directory[VIDMAP_OFFSET].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
     vid_page_table[0].p = 1;
     vid_page_table[0].r_w = 1;
     vid_page_table[0].u_s = 1;

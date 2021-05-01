@@ -20,6 +20,12 @@ void pit_init()
 
 void pit_handler()
 {
+    /* 
+     * this send eoi CANNOT be put after scheduler because when the new executed 
+     * shell (excute by terminal switch) comes back to terminal switch 
+     * using esp ebp stored in execute, eoi would not be sent, so even if IF is 1, all interrupt would
+     * fail because PIT has the highest priority.
+     */
     send_eoi(PIT_IRQ);
     scheduler();
 }
@@ -39,7 +45,6 @@ void scheduler()
     curr_pcb = get_pcb_ptr(curr_pid);
     curr_process_term_id = curr_pcb->term_id;
     next_term_id = (curr_process_term_id + 1)%TERMINAL_NUM;
-
 
     /* get next process's terminal's id */
     for(i = 0; i < TERMINAL_NUM && !terminals[next_term_id].is_running; i++)

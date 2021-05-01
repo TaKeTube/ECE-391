@@ -31,7 +31,9 @@
 .global int_rtc
 int_rtc:
     pushall
+    cli
     call    rtc_handler
+    sti
     popall
     iret
 
@@ -39,7 +41,9 @@ int_rtc:
 .global int_keyboard
 int_keyboard:
     pushall
+    cli
     call    keyboard_handler
+    sti
     popall
     iret
 
@@ -47,6 +51,8 @@ int_keyboard:
 .global int_pit
 int_pit:
     pushall
+    cli
     call    pit_handler
+    sti
     popall
     iret

@@ -37,7 +37,7 @@ int32_t terminal_init()
         terminals[i].vid_buf = (uint8_t *)(VIDEO+(i+1)*PAGE_4KB_SIZE);
         /* init page for video buffer */
         // page_table[(int)&terminals[i].vid_buf >> MEM_OFFSET_BITS].p = 1;
-        set_term_page(i)
+        set_term_page(i);
         /* init terminal buffer */
         for (j = 0; j < MAX_TERMINAL_BUF_SIZE; j++)
             terminals[i].term_buf[j] = '\0';
@@ -87,7 +87,6 @@ int32_t terminal_switch(uint32_t term_id)
         /* switch current process to the shell belongs to new terminal regardless of scheduler */
         terminals[curr_term_id].is_running = 1;
         CHECK_FAIL_RETURN(vid_remap((uint8_t *)VIDEO));
-        sti();
         execute((uint8_t *)"shell");
     }
     return 0;
@@ -181,7 +180,8 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes)
     /* return value, the number of bytes read, init to 0 */
     int ret = 0;
 
-    volatile uint8_t* read_buffer = terminals[curr_term_id].term_buf;
+    int curr_process_term_id;
+    volatile uint8_t* read_buffer;
 
     /* 
         an infinite loop to wait
@@ -190,9 +190,13 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes)
     */
     while (1)
     {
-        if (terminals[curr_term_id].is_enter == 1)
+        curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;
+        if (terminals[curr_process_term_id].is_enter == 1)
             break;
     }
+
+    cli();
+    read_buffer = terminals[curr_process_term_id].term_buf;
 
     /* 
         iterate through the keyboard read buffer
@@ -215,6 +219,8 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes)
             ret++;
     }
     clr_read_buffer();
+    sti();
+
     return ret;
 }
 
@@ -238,7 +244,7 @@ int32_t terminal_write(int32_t fd, void *buf, int32_t nbytes)
     int i = 0;
     /* return value, the number of bytes written, init to 0 */
     int ret = 0;
-
+    cli();
     if (get_pcb_ptr(curr_pid)->term_id == curr_term_id)
     {
         /* iterate through the input buffer */
@@ -266,6 +272,7 @@ int32_t terminal_write(int32_t fd, void *buf, int32_t nbytes)
             }
         }
     }
+    sti();
     /* return the number of bytes written */
     return ret;
 }

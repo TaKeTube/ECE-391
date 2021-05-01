@@ -167,8 +167,24 @@
 - 1. Add a break line when halt the program to deal with the deficiency of shell program: it does not change to a new line when a program is terminated.
   2. Add a sanity check for a filename with length bigger than 32 in find_dentry_by_name().
 
+#### 2021/04/27 Guan
+
+scheduler & terminal finished (original code haven't change)
+
+undebugged
+
+#### 2021/04/28 Guan
+
+- syscall modified for scheduling
+- undebugged
+
 #### 2021/04/28 Li
 
 - Alt + F keys for terminals finished
 - putc won't print NULL keys
-- no debug
+- undebugged
+
+#### 2021/04/29 Guan
+
+- BUG1: Enable interrupt when initializing RTC, which allows scheduling before initializing terminals. 
+- 
