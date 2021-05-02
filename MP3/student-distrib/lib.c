@@ -595,16 +595,28 @@ uint16_t get_cursor_position(void)
     return pos;
 }
 
+/* get_screen_x
+ * Inputs: void
+ * Return Value: screen_x
+ * Function: get cursor x position */
 int get_screen_x()
 {
     return screen_x;
 }
 
+/* get_screen_y
+ * Inputs: void
+ * Return Value: screen_y
+ * Function: get cursor y position */
 int get_screen_y()
 {
     return screen_y;
 }
 
+/* set_screen_xy
+ * Inputs: x,y -- cursor's position
+ * Return Value: none
+ * Function: set cursor's x,y position */
 void set_screen_xy(int x, int y)
 {
     screen_x = x;
@@ -612,10 +624,9 @@ void set_screen_xy(int x, int y)
     update_cursor(screen_x, screen_y);
 }
 
+/* The following functions operates in terminal video buffer */
 
-/* The following functions operates in terminal structs */
-
-/* Standard printf().
+/* Terminal printf(). Print string in current running process' terminal's video buffer
  * Only supports the following format strings:
  * %%  - print a literal '%' character
  * %x  - print a number in hexadecimal
@@ -741,10 +752,10 @@ format_char_switch:
     return (buf - format);
 }
 
-/* int32_t puts(int8_t* s);
+/* int32_t terminal_puts(int8_t* s);
  *   Inputs: int_8* s = pointer to a string of characters
  *   Return Value: Number of bytes written
- *    Function: Output a string to the console */
+ *    Function: Output a string to current process' terminal's video buffer */
 int32_t terminal_puts(int8_t* s) {
     register int32_t index = 0;
     while (s[index] != '\0') {
@@ -754,10 +765,10 @@ int32_t terminal_puts(int8_t* s) {
     return index;
 }
 
-/* void putc(uint8_t c);
+/* void terminal_putc(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
- *  Function: Output a character to the console */
+ *  Function: Output a character to current process' terminal's video buffer */
 void terminal_putc(uint8_t c) {
     uint32_t id = get_pcb_ptr(curr_pid)->term_id;
 
@@ -826,4 +837,3 @@ void terminal_scroll_up() {
 		*(uint8_t *)(terminals[id].vid_buf + ((NUM_COLS*(NUM_ROWS-1) + x) << 1)) = ' ';
 	}
 }
-

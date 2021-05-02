@@ -193,8 +193,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Run tests */
     launch_tests();
 #else
-    /* Execute the first program ("shell") ... */
-    // execute((uint8_t*)"shell");
+    /* launch the first terminal */
     if(launch_first_terminal() == -1)
         printf("\n fail to launch first terminal.\n");
 #endif

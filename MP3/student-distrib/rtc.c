@@ -5,8 +5,13 @@
 #include "tests.h"
 #include "terminal.h"
 
-// static int32_t virt_counter; // used to serve as counter in rtc_virtread
-static int32_t rtc_counter; // used to record whether new interrupt happens
+/* Reference: https://wiki.osdev.org/RTC */
+
+// static int32_t virt_counter; // used to serve as counter in rtc_virtread, not used now
+
+/* count rtc interrupt, would overflow, but doesn't matter */
+/* used for indicate whether a new interrupt happen or for virtualization */
+static uint32_t rtc_counter;
 
 /*
  * rtc_init
@@ -20,6 +25,7 @@ int32_t rtc_init()
 {
     int i;      /* loop index to init virtual rtc ratio array */
     uint8_t prev;
+
     /* disable NMI*/
     prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
@@ -52,6 +58,7 @@ int32_t rtc_init()
 
     return 0;
 }
+
 /*
  * rtc_set_fre
  * DESCRIPTION: set the frequency in RTC
@@ -65,7 +72,7 @@ int32_t rtc_set_fre(int32_t fre)
     int log = 0;
     uint8_t rate;
     uint8_t prev;
-    /* check whether the frequency is in vaild range*/
+    /* check whether the frequency is in valid range*/
     if (fre < RTC_MIN_FRE || fre > RTC_MAX_FRE)
         return -1;
     /* check whether the frequency is in power of 2*/
@@ -76,8 +83,7 @@ int32_t rtc_set_fre(int32_t fre)
         log += 1;
     /* get the corresponding rate due to the table 3*/
     rate = 16 - log; //16 is the number of bit patterns in Register A0,A1,A2,A3 due to table 3
-    // /* disable all interrupts, including the NMI */
-    // cli();
+
     /* disable NMI*/
     prev = inb(RTC_PORT) | 0x80; //0x80 is used to set the first bit to 1
     outb(prev, RTC_PORT);
@@ -91,8 +97,8 @@ int32_t rtc_set_fre(int32_t fre)
     /* enable the NMI*/
     prev = inb(RTC_PORT) & 0X7F; //0x7F is used to set the first bit to 0
     outb(prev, RTC_PORT);
-    // /* enable all interrupts*/
-    // sti();
+
+    /* success, return 0 */
     return 0;
 }
 
@@ -112,7 +118,7 @@ void rtc_handler() {
     outb(RTC_REGC, RTC_PORT); // select register C
     inb(RTC_DATA); // throw the contents in register C to reset status bits in register C
 
-    rtc_counter++; // use this to indicate new interrupt happens
+    rtc_counter++; // update counter
 
     /* send EOI to indicate the handler finishes the work*/
     send_eoi(RTC_IRQ);
@@ -146,16 +152,18 @@ int32_t rtc_close(int32_t fd)
 {
     /* initialize the virtread counter to 0*/
     // virt_counter = 0;
-    /* set default frequency*/
+
+    /* set default frequency and clear virtual rtc ratio array */
     rtc_set_fre(RTC_MAX_FRE);
     virt_rtc_ratio[curr_pid] = RTC_MAX_FRE/RTC_MAX_FRE;
+
     /* return 0 for success*/
     return 0;
 }
 
 /*
  * rtc_read
- * DESCRIPTION: this function serves as the read call for RTC driver. It serves as waiter until next new interrupt.
+ * DESCRIPTION: a virtualized rtc read, wait several periods cooresponding to current process' rtc frequency
  * INPUT: fd, buf, nbytes: unused variable
  * OUTPUT: none
  * RETURN: return 0 for success
@@ -165,56 +173,62 @@ int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes)
 {
     /* record the current rtc_interrupt_status */
     int32_t current_status = rtc_counter;
+    /* calculate wait period, because there is scheduling, divide it by the number of running terminals */
     int32_t wait_period = virt_rtc_ratio[curr_pid] / running_term_num;
 
+    /* if wait period is too short, set it to 1 */
     if(wait_period == 0)
         wait_period = 1;
 
-    // sti();
-    /* if the status doesn't change, wait */
+    /* if next rtc interrupt doesn't come, wait */
     while(current_status == rtc_counter);
+    /* wait for several period */
     while(rtc_counter % wait_period);
-    // cli();
 
     /* return 0 for success*/
     return 0;
-
 }
 
 /*
  * rtc_write
- * DESCRIPTION: this function serves as the write call for RTC driver. It reads the frequency in buf 
- *              and set the corresponding RTC frequency. It only receive int32_t as valid input.
+ * DESCRIPTION: a virtualized rtc write. It reads the frequency in buf 
+ *              and set the corresponding process's RTC frequency. It only receive int32_t as valid input.
+ *              freqency who is not satisfied would be set to the nearest virtual freqency
  * INPUT: fd: unused variable
  *        buf: array used to store the target frequency.
  *        nbytes: the number of byte in buf
  * OUTPUT: none
  * RETURN: return 0 for success
- * SIDEAFFECTS: none
+ * SIDEAFFECTS: current process' rtc freqency changed
  */
-
 int32_t rtc_write(int32_t fd, void* buf, int32_t nbytes)
 {
-    int32_t virt_freq;
+    int32_t virt_freq;  /* virtual freqency */
 
-    // check whether the byte numbers is 4. If not, immediately return
+    /* check whether the byte numbers is 4. If not, immediately return */
     if (nbytes != 4)
         return -1;
-    // check whether the buff is NULL
+
+    /* check whether the buff is NULL */
     if ((int32_t*)buf == NULL)
         return -1;
 
+    /* get the freqency */
     virt_freq = *(int32_t*)buf;
 
+    /* sanity check */
     if (virt_freq > RTC_MAX_FRE || virt_freq <= 0)
         return -1;
 
+    /* set freqency ratio, i.e. wait periods for virtualized rtc read */
+    /* e.g. if we want 512 Hz freqency, wait every 1024/512 = 2 interrupt period */
     virt_rtc_ratio[curr_pid] = RTC_MAX_FRE / virt_freq;
 
-    /* now the buff has int32_t number. set it as frequency. The return value depend on the function rtc_set_fre*/
+    /* success, return 0 */
     return 0;
 }
 
+/* old virtualized rtc read, wrote in Check Point 2 */
 /*
  * rtc_virtread
  * DESCRIPTION: this function implements the virtualization RTC. Notice this function receives proportion as input

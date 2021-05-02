@@ -10,8 +10,8 @@
 *	paging_init
 *	Description:    init paging when booting system
 *	inputs:         nothing
-*	outputs:	    nothing
-*	effects:	    the paging mechanism is enabled and initialized 
+*	outputs:        nothing
+*	effects:        the paging mechanism is enabled and initialized 
 */
 void paging_init()
 {
@@ -26,6 +26,7 @@ void paging_init()
     /* activate 4-7mB memory with a 4mB page */
     page_directory[1].p = 1;
     page_directory[1].ps = 1;
+    page_directory[1].g = 1;
     /* 
         for 4mB page, set bit 13-21 to be 0, and the 10 bit msb should be 1
         so 00000000 01 00 0000 0000 = 0x00400, we should set it to be 0x400
@@ -82,7 +83,7 @@ void page_table_init()
     {
         page_table[i].p = 0;        // Present
         page_table[i].r_w = 1;      // Read/write permission, always 1
-        page_table[i].u_s = 1;      // User/supervisor
+        page_table[i].u_s = 0;      // User/supervisor
         page_table[i].pwt = 0;      // Page write-through, always 0
         page_table[i].pcd = 0;      // Page cache disabled
         page_table[i].a = 0;        // Accessed, won't use, does not matter
@@ -106,7 +107,7 @@ void enable_paging()
     asm volatile(
         /* load cr3 base addr */
         "movl $page_directory, %eax;"
-        /* mask unnecessary bits, the last 10 bits would come from viurtual memory addr as index */
+        /* mask unnecessary bits, the last 10 bits would come from virtual memory addr as index */
         "andl $0xFFFFFC00, %eax;"   
         "movl %eax, %cr3;"
 

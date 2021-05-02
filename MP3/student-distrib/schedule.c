@@ -5,19 +5,36 @@
 #include "lib.h"
 
 /* https://wiki.osdev.org/Programmable_Interval_Timer */
+
+/*
+ * pit_init
+ * DESCRIPTION: initialize the PIT, see schedule.h file for command details
+ * INPUT: none
+ * OUTPUT: none
+ * RETURN: none
+ * SIDE AFFECTS: none
+ */
 void pit_init()
 {
     /* sent command to pit */
     outb(PIT_CMD, PIT_CMD_PORT);
-    /*sent least significant bits of period */
+    /* sent least significant bits of period */
     outb(PIT_LATCH && PIT_BITMASK, PIT_CHANNEL_0);
-    /*sent most significant bits of period */
+    /* sent most significant bits of period */
     outb(PIT_LATCH >> PIT_MSB_OFFSET, PIT_CHANNEL_0);
     /* enable interrupt */
     enable_irq(PIT_IRQ);
     return;
 }
 
+/*
+ * pit_handler
+ * DESCRIPTION: PIT handler, call scheduler to do scheduling
+ * INPUT: none
+ * OUTPUT: none
+ * RETURN: none
+ * SIDE AFFECTS: none
+ */
 void pit_handler()
 {
     /* 
@@ -27,21 +44,34 @@ void pit_handler()
      * fail because PIT has the highest priority.
      */
     send_eoi(PIT_IRQ);
+    /* call scheduler */
     scheduler();
 }
 
+/*
+ * scheduler
+ * DESCRIPTION: do scheduling, switch between current running processes in different terminals
+ * INPUT: none
+ * OUTPUT: none
+ * RETURN: none
+ * SIDE AFFECTS: none
+ */
 void scheduler()
 {
-    int i;
-    pcb_t* curr_pcb;
-    pcb_t* next_pcb;
-    uint32_t curr_process_term_id;
-    uint32_t next_term_id;
-    uint32_t next_pid;
+    int i;                          /* loop index for finding new process' terminal */
+    pcb_t* curr_pcb;                /* current running process' pcb                 */
+    pcb_t* next_pcb;                /* next process' pcb                            */
+    uint32_t curr_process_term_id;  /* current running process' terminal id         */
+    uint32_t next_term_id;          /* next process' terminal id                    */
+    uint32_t next_pid;              /* next process id                              */
 
+    /* if curr_pid is -1, which means the first process has not executed, just return */
+    /* this cannot be removed because if it is removed, scheduler would switch to an inexistent */
+    /* place and mess every thing up when the first shell hasn't been executed                  */
     if(curr_pid == -1)
         return;
 
+    /* get current process ralevent info */
     curr_pcb = get_pcb_ptr(curr_pid);
     curr_process_term_id = curr_pcb->term_id;
     next_term_id = (curr_process_term_id + 1)%TERMINAL_NUM;
@@ -72,8 +102,7 @@ void scheduler()
     /* set current fd array */
     cur_fd_array = next_pcb->fd_array;
 
-    /* set tss */
-    tss.ss0 = KERNEL_DS;
+    /* set kernel stack pointer */
     tss.esp0 = KS_BASE_ADDR - KS_SIZE * next_pid - sizeof(int32_t);
 
     /* update current pid */

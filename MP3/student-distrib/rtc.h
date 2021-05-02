@@ -17,6 +17,7 @@
 #define RTC_MIN_FRE 2
 #define RTC_MAX_FRE 1024
 
+/* freqency ratio array for processes, i.e. wait periods for virtualized rtc read */
 int32_t virt_rtc_ratio[NUM_PROCESS];
 
 /* initialize the rtc */
@@ -27,12 +28,14 @@ extern int32_t rtc_set_fre(int32_t fre);
 extern void rtc_handler();
 /* open the rtc driver */
 extern int32_t rtc_open(const char* filename);
-/* RTC read. wait until next new interrupt */
+/* RTC read. Virtualized. wait several periods cooresponding to current process' rtc frequency */
 extern int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes);
-/* RTC write. It reads the frequency in buf and set the corresponding RTC frequency */
+/* RTC write.Virtualized. It reads the frequency in buf and set the corresponding process's RTC frequency. */
 extern int32_t rtc_write(int32_t fd, void* buf, int32_t nbytes);
-/* virtualized RTC read */
-extern int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes);
 /*  close the RTC driver and reset some variable */
 extern int32_t rtc_close(int32_t fd);
+
+/* Old virtualized RTC read wrote in check point 2 */
+// extern int32_t rtc_virtread(int32_t fd, void* buf, int32_t nbytes);
+
 #endif // !_RTC_H

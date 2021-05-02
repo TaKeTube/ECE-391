@@ -16,10 +16,13 @@
 #define PIT_BITMASK         0xff        /* mask most significant bits       */
 #define PIT_MSB_OFFSET      8
 
+/* initialize pit */
 extern void pit_init();
 
+/* pit handler */
 extern void pit_handler();
 
+/* do scheduling, switch between current running processes in different terminals */
 void scheduler();
 
 #endif

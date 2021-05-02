@@ -59,8 +59,6 @@ typedef struct pcb_t {
     /* used for context switch */
     uint32_t ebp;
     uint32_t esp;
-    uint32_t parent_ebp;
-    uint32_t parent_esp;
 } pcb_t;
 
 /* current process id */
@@ -88,17 +86,19 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes);
 /* system call write, would call particular device's write function according to the file type */
 int32_t write(int32_t fd, void* buf, int32_t nbytes);
 
-/* not finised yet */
+/* get args from command and copy it to buffer */
 int32_t getargs(uint8_t *buf, int32_t nbytes);
 
-/* not finished yet */
+/* maps user space virtual vidmem to physical video memory  */
 int32_t vidmap(uint8_t** screen_start);
 
+/* remaps user space virtual vidmem to a physical address */
 int32_t vid_remap(uint8_t* phys_addr);
 
 /* get new process id by finding unoccupied position of pid_array */
 uint32_t get_new_pid();
 
+/* remaps user space virtual vidmem to a physical address */
 inline pcb_t* get_pcb_ptr(uint32_t pid);
 
 /* initialize file operation table array */

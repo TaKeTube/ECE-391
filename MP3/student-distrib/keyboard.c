@@ -4,15 +4,10 @@
 #include "terminal.h"
 #include "syscall.h"
 
-
-
 static unsigned char caps_state = 0;
 static unsigned char shift_state = 0;
 static unsigned char ctrl_state = 0;
 static unsigned char alt_state = 0;
-
-// volatile unsigned char read_buffer[READ_BUFFER_SIZE];
-// volatile int read_buffer_ptr = 0;
 
 // array for basic key inputs
 unsigned char key_table[4][KEY_NUM] = {
@@ -51,7 +46,7 @@ void keyboard_init(){
 
 /*
 *	keyboard_handler
-*	Description: If a valid key is pressed, the function echo it onto screen.
+*	Description: If a valid key is pressed, the function echo it onto screen (foreground terminal regardless of scheduler).
 *	inputs:	 nothing
 *	outputs: nothing
 *	side effects: echo current pressed key to screen
@@ -60,10 +55,14 @@ void keyboard_handler(){
     unsigned char scancode = 0;     /* scanned code */
     int i;                          /* loop index for tab */
 
+    /* enable pic interrupt */
+    send_eoi(KEYBOARD_IRQ);
+
+    /* get current foreground terminal and its buffer */
     terminal_t* curr_term = &terminals[curr_term_id];
     volatile uint8_t* read_buffer = curr_term->term_buf;
 
-    // wait for interrupt
+    /* wait for interrupt */
     while(1){
         if (inb(KEYBOARD_PORT)){
             scancode = inb(KEYBOARD_PORT);
@@ -102,11 +101,12 @@ void keyboard_handler(){
         case ENTER:
             read_buffer[curr_term->term_buf_offset] = '\n';
             curr_term->term_buf_offset += 1;
-            /* if enter is pressed, set flag is_ready to tell the terminal ready to read */
+            /* if enter is pressed, set flag is_enter to tell the foreground terminal ready to read */
             terminals[curr_term_id].is_enter = 1;
             newline();
             break;
         case BACKSPACE:
+            /* handle backspace */
             if (curr_term->term_buf_offset>0){
                 curr_term->term_buf_offset -= 1;
                 read_buffer[curr_term->term_buf_offset] = '\0';
@@ -114,6 +114,7 @@ void keyboard_handler(){
             }
             break;
         case TAB:
+            /* one table is equal to 4 space */
             for (i=0; i<4; i++){
                 read_buffer[curr_term->term_buf_offset] = ' ';
                 curr_term->term_buf_offset += 1;
@@ -121,16 +122,15 @@ void keyboard_handler(){
             }
             break;
         default:
+            /* print scancode */
             print_key(scancode);
             break;
     }
-    // end interrupt
-    send_eoi(KEYBOARD_IRQ);
 }
 
 /*
 *	print_key
-*	Description: If a valid scancode needs to be printed, show it to screen.
+*	Description: If a valid scancode needs to be printed, show it to screen (foreground terminal regardless of scheduler).
 *	inputs:	 a scancode from keyboard.
 *	outputs: nothing
 *	side effects: echo character corresponds to scancode to screen.
@@ -138,26 +138,21 @@ void keyboard_handler(){
 void print_key(unsigned char scancode){
     unsigned char key;  /* corresponding key value */
     
+    /* get current foreground terminal and its buffer */
     terminal_t* curr_term = &terminals[curr_term_id];
     volatile uint8_t* read_buffer = curr_term->term_buf;
 
-    // for alt+Fkeys, switch the terminal
+    /* for alt+Fkeys, switch the terminal */
     if(alt_state){
-        if (scancode == F1){
-            send_eoi(KEYBOARD_IRQ);
+        if (scancode == F1)
             terminal_switch(0);
-        }
-        else if (scancode == F2){
-            send_eoi(KEYBOARD_IRQ);
+        else if (scancode == F2)
             terminal_switch(1);
-        }
-        else if (scancode == F3){
-            send_eoi(KEYBOARD_IRQ);
+        else if (scancode == F3)
             terminal_switch(2);
-        }
     }
 
-    // select different key modes based on shift and cpas state
+    /* select different key modes based on shift and cpas state */
     if (scancode >= KEY_NUM)
         return;
     else if (shift_state & caps_state){
@@ -172,14 +167,11 @@ void print_key(unsigned char scancode){
     else{
         key = key_table[0][scancode];
     }
-        
-    // we do not need print these NULL keys
+
+    /* we do not need print these NULL keys */
     if (key == '\0')
-    {
-        // is_ready = 1;
         return;
-    }
-    // for ctrl+L, we clear the screen
+    /* for ctrl+L, we clear the screen */
     else if (ctrl_state){
         if (key == 'l' || key == 'L'){
             clear();
@@ -190,33 +182,34 @@ void print_key(unsigned char scancode){
         else if (key == 'c')
             return;
     }
-    // print the correct key
+    /* print the correct key to the foreground */
     else if (curr_term->term_buf_offset < READ_BUFFER_SIZE){
         read_buffer[curr_term->term_buf_offset] = key;
         curr_term->term_buf_offset += 1;
         putc(key);
     }
-    // else
-    //     is_ready = 1;
     return;
 }
 
 /*
 *	clr_read_buffer
-*	Description: Clear read buffer and reset its pointer.
+*	Description: Clear current running process' terminal's buffer and reset its pointer.
 *	inputs:	 nothing
 *	outputs: nothing
-*	side effects: the read buffer is reseted.
+*	side effects: the read buffer is resetted.
 */
 void clr_read_buffer(){
-    int i;  /* loop index for clearing read buffer */
-    int curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;
-    terminal_t* curr_term = &terminals[curr_process_term_id];
-    volatile uint8_t* read_buffer = curr_term->term_buf;
+    int i;                                                      /* loop index for clearing read buffer          */
+    int curr_process_term_id = get_pcb_ptr(curr_pid)->term_id;  /* current running process' terminal id         */
+    terminal_t* curr_term = &terminals[curr_process_term_id];   /* current running process' terminal pointer    */
+    volatile uint8_t* read_buffer = curr_term->term_buf;        /* current running process' terminal buffer     */
+
+    /* clear the buffer */
     for (i=0; i<READ_BUFFER_SIZE; i++)
         read_buffer[i] = 0;
     curr_term->term_buf_offset = 0;
-    /* clear is_ready */
+
+    /* clear is_ready, clear is_enter flag */
     terminals[curr_process_term_id].is_enter = 0;
     return;
 }

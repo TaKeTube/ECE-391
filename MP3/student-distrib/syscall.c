@@ -22,14 +22,14 @@ static uint32_t pid_array[NUM_PROCESS] = {0};
 int32_t halt(uint8_t status)
 {
     int fd;                             /* file descriptor array index */
-    int curr_process_term_id;
+    int curr_process_term_id;           /* current running process' terminal id */
     uint16_t retval;                    /* return value */
-    pcb_t *curr_pcb, *parent_pcb;    /* pcb pointer */
+    pcb_t *curr_pcb, *parent_pcb;       /* pcb pointers */
 
     /* forbid interrupt */
     cli();
 
-    /* get current pcb */
+    /* get current process' pcb pointer */
     curr_pcb = get_pcb_ptr(curr_pid);
 
     /* get current process' terminal id */
@@ -38,7 +38,7 @@ int32_t halt(uint8_t status)
     /* clear pid */
     pid_array[curr_pcb->pid] = 0;
 
-    /* get parent pcb */
+    /* get parent pcb, if current process is the base shell, just load itsself as its parent for re-executing */
     parent_pcb = get_pcb_ptr((curr_pcb->parent_pid == NO_PARENT_PID) ? curr_pid : curr_pcb->parent_pid);
 
     /* clear fd array, close any relevant files */
@@ -59,8 +59,7 @@ int32_t halt(uint8_t status)
     /* restore parent paging */
     set_paging(parent_pcb->pid);
 
-    /* restore tss data */
-    tss.ss0 = KERNEL_DS;
+    /* restore tss data, i.e. kernel stack pointer */
     tss.esp0 = KS_BASE_ADDR - KS_SIZE*parent_pcb->pid - sizeof(int32_t);
 
     /* update terminal info */
@@ -83,12 +82,12 @@ int32_t halt(uint8_t status)
     retval = (status == HALT_EXCEPTION) ? HALT_EXCEPTION_RETVAL : (uint16_t)status;
 
     /* add an line break to fix a small deficiency of the shell program */
-    terminal_putc('\n');
+    if(parent_pcb->term_id == curr_term_id)
+        putc('\n');
+    else
+        terminal_putc('\n');
 
-    // /* enable interrupt */
-    // sti();
-
-    /* halt */
+    /* halt and enable interrupt */
     asm volatile("              \n\
         movl    %0, %%esp       \n\
         movl    %1, %%ebp       \n\
@@ -280,11 +279,22 @@ int32_t execute(const uint8_t *cmd)
     /* set argument */
     strncpy((int8_t*)new_pcb->arg,(int8_t*)argument, MAX_ARG_LEN);
 
-    /* set tss */
-    tss.ss0 = KERNEL_DS;
+    /* set kernel stack pointer */
     tss.esp0 = KS_BASE_ADDR - KS_SIZE * new_pid - sizeof(int32_t);
 
-    /* store esp and ebp */
+    /* store esp and ebp if it is not the first shell of first kernel */
+    /* this esp & ebp can be used for halt when system want to restore parent stack info */
+    /* 
+     * it can also be used for the first schdueling in the new executed shell 
+     * when a new shell in a new terminal is executed, a schedule interrupt would happen
+     * and try to restore the stack info of the current program
+     * however, the new shell is not entered by scheduler() but the execute() function
+     * therefore, the scheduler would let the system restore the execute() stack status
+     * and would continue executing scheduler()'s instruction, which is leave & ret
+     * so the system would back to terminal_switch() from execute()
+     * then return to keyboard function finally return to interrupt linkage code
+     * then enable interrupt and return from interrupt linkage code
+     */
     if(curr_pid != -1){
         curr_pcb = get_pcb_ptr(curr_pid);
         asm volatile("                                \n\
@@ -310,10 +320,7 @@ int32_t execute(const uint8_t *cmd)
     new_eip = *(int32_t*)PROGRAM_START_ADDR;
     new_esp = USER_STACK_ADDR;
 
-    // /* enable interrupt */
-    // sti();
-
-    /* set infomation for IRET to user program space */
+    /* set infomation for IRET to user program space, enable interrupt */
     asm volatile ("                                                \n\
         movw    %%cx, %%ds                                         \n\
         pushl   %%ecx                                              \n\
@@ -449,13 +456,13 @@ int32_t write(int32_t fd, void *buf, int32_t nbytes)
 }
 
 /* 
-*	getargs
-*	Description: get args from command and copy it to buffer
-*	Input: 	buf -- destination buffer's pointer
-* 			nbytes -- number of bytes to copy
-*	Output: 0 for success, -1 for failure
-*	Side Effect: copy args to buffer
-*/
+ * getargs
+ * Description: get args from command and copy it to buffer
+ * Input:   buf -- destination buffer's pointer
+ *          nbytes -- number of bytes to copy
+ * Output: 0 for success, -1 for failure
+ * Side Effect: copy args to buffer
+ */
 int32_t getargs(uint8_t *buf, int32_t nbytes)
 {
     /* get current pcb */
@@ -465,71 +472,86 @@ int32_t getargs(uint8_t *buf, int32_t nbytes)
     /* sanity check */
     if (buf == NULL || pcb_ptr->arg[0] == '\0')
         return -1;
+
     /* copy to buffer */
     strncpy((int8_t*)buf, (int8_t*)pcb_ptr->arg, nbytes);
+
+    /* success, return 0 */
     return 0;
 }
 
 /* 
-*	vidmap
-*	Description: maps video memory to user space
-*	Input: 	screen_start -- pointer to user video memory
-*	Output: 0 for success, -1 for failure
-*/
+ *  vidmap
+ *  Description: maps user space virtual vidmem to physical video memory 
+ *               and return virtual vidmem address to user
+ *  Input:  screen_start -- a pointer points to a place where to output virtual video memory addr for user
+ *  Output: 0 for success, -1 for failure, virtual vidmem address
+ */
 int32_t vidmap(uint8_t** screen_start)
 {
     /* check if the pointer is in user space */
     if ((unsigned int)screen_start <= ADDR_128MB || (unsigned int)screen_start >= ADDR_132MB)
         return -1;
 
+    /* output vidmem virtual address for user */
     *screen_start = (uint8_t*)VID_VIRTUAL_ADDR;
 
     /* initialize the VIDMAP page */
     page_directory[VIDMAP_OFFSET].p           = 1;    // present
-    page_directory[VIDMAP_OFFSET].r_w         = 1;
+    page_directory[VIDMAP_OFFSET].r_w         = 1;    // enable r/w
     page_directory[VIDMAP_OFFSET].u_s         = 1;    // user mode
     page_directory[VIDMAP_OFFSET].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
-    vid_page_table[0].p = 1;
-    vid_page_table[0].r_w = 1;
-    vid_page_table[0].u_s = 1;
+    vid_page_table[0].p = 1;    // present
+    vid_page_table[0].r_w = 1;  // enable r/w
+    vid_page_table[0].u_s = 1;  // user mode
     vid_page_table[0].base_addr = VID_PHYS_ADDR >> MEM_OFFSET_BITS;
+
     /* flush TLB */
     flush_TLB();
+
+    /* success, return 0 */
     return 0;
 }
 
-//9
+//9 not implemented
 int32_t set_handler()
 {
     return -1;
 }
 
-//10
+//10 not implemented
 int32_t sigreturn()
 {
     return -1;
 }
 
+/* 
+ *  vidmap
+ *  Description: remaps user space virtual vidmem to a physical address
+ *               (basically terminal vid buffer or physical vidmem)
+ *  Input:  phys_addr -- a pointer points to the start of physical memory to map to
+ *  Output: 0 for success, -1 for failure
+ */
 int32_t vid_remap(uint8_t* phys_addr)
 {
     /* sanity check */
     if(phys_addr == NULL)
         return -1;
 
-    // uint32_t offset = ((uint32_t)VID_VIRTUAL_ADDR) / PAGE_4MB_SIZE;
-
+    /* remap video virtual memory */
     page_directory[VIDMAP_OFFSET].p           = 1;    // present
-    page_directory[VIDMAP_OFFSET].r_w         = 1;
+    page_directory[VIDMAP_OFFSET].r_w         = 1;    // enable r/w
     page_directory[VIDMAP_OFFSET].u_s         = 1;    // user mode
     page_directory[VIDMAP_OFFSET].base_addr   = (unsigned int)vid_page_table >> MEM_OFFSET_BITS;
-    vid_page_table[0].p = 1;
-    vid_page_table[0].r_w = 1;
-    vid_page_table[0].u_s = 1;
+    vid_page_table[0].p = 1;    // present
+    vid_page_table[0].r_w = 1;  // enable r/w
+    vid_page_table[0].u_s = 1;  // user mode
     vid_page_table[0].base_addr = ((uint32_t)phys_addr) >> MEM_OFFSET_BITS;
 
     /* flush TLB */
     flush_TLB();
 
+    /* success, return 0 */
     return 0;
 }
 
@@ -559,6 +581,14 @@ uint32_t get_new_pid()
     return -1;
 }
 
+/*
+ * get_pcb_ptr
+ * DESCRIPTION: get process's PCB pointer
+ * INPUT: pid -- process id
+ * OUTPUT: PCB of the process 
+ * RETURN: PCB of the process 
+ * SIDE AFFECTS: none
+ */
 inline pcb_t* get_pcb_ptr(uint32_t pid)
 {
     return (pcb_t*)(KS_BASE_ADDR - KS_SIZE*(pid+1));
