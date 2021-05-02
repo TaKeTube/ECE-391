@@ -1,6 +1,5 @@
 /*
     paging.h header file.
-
 */
 
 #ifndef _PAGING_H
@@ -23,8 +22,6 @@
 #define VID_PHYS_ADDR       0xB8000
 #define VID_VIRTUAL_ADDR    ADDR_140MB
 #define VIDMAP_OFFSET       VID_VIRTUAL_ADDR/PAGE_4MB_SIZE          /* 140/4 */
-// #define VIDMAP_OFFSET       35
-
 
 /* struct for page directory entry */
 typedef struct page_dir_entry

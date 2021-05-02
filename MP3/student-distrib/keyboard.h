@@ -21,12 +21,6 @@
 #define F2          		0x3C
 #define F3          		0x3D
 
-/* keyboard read buffer */
-// volatile unsigned char read_buffer[READ_BUFFER_SIZE];
-/* a flag to communicate between keyboard and terminal, 1 means a terminal_read is ready to perform */
-// volatile int is_ready;
-
-
 /* init the keyboard by enabling the corresponding irq line */
 extern void keyboard_init();
 /* keyboard interrupt handler */

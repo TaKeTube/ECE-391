@@ -4,7 +4,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 
-/* https://wiki.osdev.org/Programmable_Interval_Timer */
+/* Reference: https://wiki.osdev.org/Programmable_Interval_Timer */
 
 /*
  * pit_init

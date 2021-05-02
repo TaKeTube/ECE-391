@@ -199,13 +199,15 @@
 - **BUG1**: **PAGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART**
 - This bug is **extremely important**, it is because when we execute a new terminal and a new shell, the scheduler would try to restore esp and ebp to back to first shell, however, we did not store the esp & ebp before. Then I thought about it for a while, because we need to keep a similar stack status as scheduler when we store the esp & ebp before executing. Finally I figured it out by store esp & ebp at the end of execution.
 - when a new shell in a new terminal is executed, a schedule interrupt would happen and try to restore the stack info of the current program. However, the new shell is not entered by scheduler() but the execute() function. Therefore, the scheduler would let the system restore the execute() stack status and would continue executing scheduler()'s instruction, which is leave & ret. So the system would back to terminal_switch() from execute(), then return to keyboard function finally return to interrupt linkage code, then enable interrupt and return from interrupt linkage code.
-
-- **BUG2:** When a program halt and the foreground terminal is not its terminal, we cannot execute anything in the foreground terminal
+- **BUG2:** When switch to another terminal, interrupt is disable.
+  - reason: I put the send_eoi() after the scheduler() in PIT handler. This send eoi CANNOT be put after scheduler because when the new executed shell (excute by terminal switch) comes back to terminal switch (because of the scheduler) using esp ebp stored in execute, eoi would not be sent, so even if IF is 1, all interrupt would fail because PIT IRQ has the highest priority.
+  - solution: put send eoi before scheduler()
+- **BUG3:** When a program halt and the foreground terminal is not its terminal, we cannot execute anything in the foreground terminal
   - reason: wrongly use the foreground terminal but not the current running process' terminal in the halt()
-  - solution: change it to the current running process' terminal.
-- **BUG3:** When a program halt, the system would crash and restart sometimes (frequently)
+  - solution: change it to the current running process' terminal. 
+- **BUG4:** When a program halt, the system would crash and restart sometimes (frequently)
   - reason:  in halt(), we use sti() too early, so the scheduler interrupt halt and causes some problem
   - solution: put sti in the assembly code just before iret
-- **BUG4:** After fish halt, the frequency of pingpong become extremely low
+- **BUG5:** After fish halt, the frequency of pingpong become extremely low
   - reason: fish calls rtc_close(), who reset the rtc frequency to the default frequency
   - solution: virtualize the RTC read and write
