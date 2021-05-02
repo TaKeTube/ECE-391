@@ -167,11 +167,15 @@
 - 1. Add a break line when halt the program to deal with the deficiency of shell program: it does not change to a new line when a program is terminated.
   2. Add a sanity check for a filename with length bigger than 32 in find_dentry_by_name().
 
+#### 2021/04/27 Xie
+
+- terminal modified
+
 #### 2021/04/27 Guan
 
-scheduler & terminal finished (original code haven't change)
+- scheduler & terminal finished (original code haven't change)
 
-undebugged
+- undebugged
 
 #### 2021/04/28 Guan
 
@@ -186,5 +190,22 @@ undebugged
 
 #### 2021/04/29 Guan
 
-- BUG1: Enable interrupt when initializing RTC, which allows scheduling before initializing terminals. 
-- 
+- **BUG1:**  **PAGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART**
+  - reason: Enable interrupt when initializing RTC, which allows scheduling before initializing terminals. 
+  - solution: set curr_pid to -1 initially, and add a conditional check for this at the begin of the scheduler 
+
+#### 2021/5/1&2 Guan
+
+- **BUG1**: **PAGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART & AGE FALUT & RESTART**
+- This bug is **extremely important**, it is because when we execute a new terminal and a new shell, the scheduler would try to restore esp and ebp to back to first shell, however, we did not store the esp & ebp before. Then I thought about it for a while, because we need to keep a similar stack status as scheduler when we store the esp & ebp before executing. Finally I figured it out by store esp & ebp at the end of execution.
+- when a new shell in a new terminal is executed, a schedule interrupt would happen and try to restore the stack info of the current program. However, the new shell is not entered by scheduler() but the execute() function. Therefore, the scheduler would let the system restore the execute() stack status and would continue executing scheduler()'s instruction, which is leave & ret. So the system would back to terminal_switch() from execute(), then return to keyboard function finally return to interrupt linkage code, then enable interrupt and return from interrupt linkage code.
+
+- **BUG2:** When a program halt and the foreground terminal is not its terminal, we cannot execute anything in the foreground terminal
+  - reason: wrongly use the foreground terminal but not the current running process' terminal in the halt()
+  - solution: change it to the current running process' terminal.
+- **BUG3:** When a program halt, the system would crash and restart sometimes (frequently)
+  - reason:  in halt(), we use sti() too early, so the scheduler interrupt halt and causes some problem
+  - solution: put sti in the assembly code just before iret
+- **BUG4:** After fish halt, the frequency of pingpong become extremely low
+  - reason: fish calls rtc_close(), who reset the rtc frequency to the default frequency
+  - solution: virtualize the RTC read and write
