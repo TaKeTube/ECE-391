@@ -50,8 +50,8 @@ int32_t halt(uint8_t status)
     cur_fd_array[0].op = NULL;
     cur_fd_array[0].flags = FD_FLAG_FREE;
     /* clear stdout fd */
-    cur_fd_array[0].op = NULL;
-    cur_fd_array[0].flags = FD_FLAG_FREE;
+    cur_fd_array[1].op = NULL;
+    cur_fd_array[1].flags = FD_FLAG_FREE;
 
     /* restore parent fd array */
     cur_fd_array = parent_pcb->fd_array;
